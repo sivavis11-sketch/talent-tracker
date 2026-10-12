@@ -109,6 +109,10 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   await pg.reload(); await wait(1200);
   const after = await pg.evaluate(() => ({ n: active().length, hidden: PLAYERS.find(p => p.id === 'a-T100').hidden, manual: PLAYERS.some(p => p.name === 'Test Manual'), days: Object.keys(DAYS).length }));
   ok(after.hidden === true && after.manual && after.n === 7 && after.days >= 1, 'after reload: hidden player, manual player and points all kept ' + JSON.stringify(after));
+  await pg.click('nav [data-tab=home]'); await wait(300); await shot('8-home-week');
+  ok(await pg.isVisible('.poster[data-player]'), 'Home shows the Player of the week poster');
+  await pg.click('.poster[data-player]'); await wait(300);
+  ok(await pg.isVisible('.poster .sur') && await pg.isVisible('[data-act=back]'), 'Player of the week opens that player\'s poster report card');
   ok(errs.length === 0, 'no page errors ' + JSON.stringify(errs));
   console.log('script calls:', calls);
   await br.close(); server.close();

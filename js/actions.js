@@ -28,42 +28,66 @@ async function pdfLib(){
   if(!window.jspdf.jsPDF.API.autoTable)await loadScript(LIB.auto);
   return window.jspdf.jsPDF;
 }
-async function headImg(){
-  if(headImg.d!==undefined)return headImg.d;
-  try{const b=await (await fetch("img/pdfhead.jpg")).blob();headImg.d=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r(null);f.readAsDataURL(b)})}catch(_){headImg.d=null}
-  return headImg.d;
+async function pngData(src){
+  const cache=pngData.c=pngData.c||{};if(src in cache)return cache[src];
+  try{const b=await (await fetch(src)).blob();cache[src]=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r(null);f.readAsDataURL(b)})}catch(_){cache[src]=null}
+  return cache[src];
 }
-const NAVY=[8,19,50],BLUE=[59,116,255],LIME=[57,200,57],INK=[20,28,48],MUTE=[110,120,140],TINT=[242,245,251];
-function pdfHeader(doc,img,eyebrow,title,sub){
-  const W=doc.internal.pageSize.getWidth(),H=W*352/1200;
-  doc.setFillColor(...NAVY);doc.rect(0,0,W,H,"F");if(img)doc.addImage(img,"JPEG",0,0,W,H);
-  doc.setTextColor(...LIME);doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.text(eyebrow.toUpperCase(),14,22,{charSpace:1.2});
-  doc.setTextColor(255,255,255);doc.setFont("helvetica","normal");doc.setFontSize(24);doc.text(doc.splitTextToSize(title,110),14,34);
-  doc.setFontSize(10);doc.setTextColor(205,215,240);doc.text(sub,14,H-10);
+const CHAR=[43,43,43],GHOST=[58,58,58],RED=[239,62,54],ORANGE=[240,88,43],PURPLE=[142,45,116],INK=[30,30,30],MUTE=[120,120,120],TINT=[246,243,242];
+const POSTER=[142,14,25],PINK=[255,138,147];
+const alpha=(doc,o)=>doc.setGState(new doc.GState({opacity:o,"stroke-opacity":o}));
+// dark header for the list reports: ghost word, orange eyebrow, red→purple strip
+function pdfHeader(doc,eyebrow,title,sub){
+  const W=doc.internal.pageSize.getWidth(),H=46;
+  doc.setFillColor(...CHAR);doc.rect(0,0,W,H,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(78);doc.setTextColor(...GHOST);doc.text(title.split(" ")[0].toUpperCase(),W-8,H-3,{align:"right"});
+  [RED,[201,58,85],PURPLE].forEach((c,i)=>{doc.setFillColor(...c);doc.rect(i*W/3,H-2.5,W/3+.2,2.5,"F")});
+  doc.setTextColor(249,162,59);doc.setFontSize(8.5);doc.text(eyebrow.toUpperCase(),14,15,{charSpace:1.2});
+  doc.setTextColor(255,255,255);doc.setFontSize(22);doc.text(doc.splitTextToSize(title,130),14,27);
+  doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(207,207,207);doc.text(sub,14,H-8);
   return H+10;
+}
+// red sports-poster header for the report card: giant surname behind the player cut-out, big stats on a dark band
+async function posterHeader(doc,c,PL){
+  const W=doc.internal.pageSize.getWidth(),H=122,p=c.p,[first,sur]=splitName(p.name);
+  doc.setFillColor(...POSTER);doc.rect(0,0,W,H,"F");
+  alpha(doc,.05);doc.setDrawColor(255,255,255);doc.setLineWidth(.2);for(let x=6;x<W;x+=6)doc.line(x,0,x,H);for(let y=6;y<H;y+=6)doc.line(0,y,W,y);
+  alpha(doc,.45);doc.setFillColor(214,40,52);doc.circle(W*.6,H*.48,62,"F");
+  alpha(doc,.3);doc.setFillColor(214,36,48);doc.rect(W*.44,0,W*.28,H,"F");alpha(doc,1);
+  doc.setFillColor(211,32,47);doc.rect(12,0,20,44,"F");doc.setFont("helvetica","bold");doc.setFontSize(17);doc.setTextColor(255,255,255);doc.text(c.oAge?"#"+c.oAge:"-",22,40,{align:"center"});
+  const cap=(t,v,y)=>{doc.setFont("helvetica","bold");doc.setFontSize(7.5);doc.setTextColor(255,255,255);doc.text(t.toUpperCase(),38,y,{charSpace:.6});if(v){doc.setTextColor(...PINK);doc.text(String(v).toUpperCase(),38,y+4.2,{charSpace:.6})}};
+  cap("< Player report card >","",10);cap("Age group",p.ag,20);if(p.group)cap("Group",p.group,32);cap(PL,"",46);
+  doc.setDrawColor(255,255,255);doc.setLineWidth(.3);alpha(doc,.75);const lx=W-34,ly=8;doc.rect(lx,ly,20,18);doc.line(lx,ly+18,lx+20,ly);doc.line(lx+10,ly+18,lx+10,ly+36);doc.line(lx+10,ly+36,lx+20,ly+36);doc.line(lx+20,ly+18,lx+20,ly+36);doc.line(lx+10,ly+36,lx+20,ly+18);alpha(doc,1);
+  let fs=130;doc.setFont("helvetica","bold");doc.setFontSize(fs);while(fs>40&&doc.getTextWidth(sur)>W-16){fs-=4;doc.setFontSize(fs)}
+  const base=H-30;doc.setTextColor(255,255,255);doc.text(sur,W-8,base,{align:"right"});
+  if(first){doc.setFont("helvetica","normal");doc.setFontSize(18);doc.setTextColor(...PINK);doc.text(first,W-10,base-fs*.3528*.74-3,{align:"right"})}
+  const img=await pngData("img/pdf-"+(/^f/i.test(p.gender||"")?"kick":"stand")+".png");
+  if(img){const ip=doc.getImageProperties(img),ih=H-10,iw=ih*ip.width/ip.height;doc.addImage(img,"PNG",W*.55-iw/2,H-ih,iw,ih)}
+  alpha(doc,.78);doc.setFillColor(60,0,8);doc.rect(W*.42,H-26,W*.58,26,"F");alpha(doc,1);
+  [[String(c.total),"Points"],[ord(c.oAge),"In "+p.ag+" of "+c.nAge],[ord(c.oAll),"Overall of "+c.n]].forEach(([v,k],i)=>{const x=W*.42+W*.58*(i+.5)/3;
+    doc.setFont("helvetica","normal");doc.setFontSize(24);doc.setTextColor(255,255,255);doc.text(v,x,H-12,{align:"center"});doc.setFontSize(8);doc.setTextColor(...PINK);doc.text(k,x,H-5.5,{align:"center"})});
+  return H+12;
 }
 function pdfFooters(doc){
   const n=doc.getNumberOfPages(),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
   for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...MUTE);doc.text("Talent Tracker · Coach Siva · "+new Date().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}),14,H-8);doc.text(i+" / "+n,W-14,H-8,{align:"right"})}
 }
 const tbl=(doc,y,head,body,opt={})=>{doc.autoTable({startY:y,head:[head],body,theme:"plain",margin:{left:14,right:14},
-  styles:{font:"helvetica",fontSize:9,textColor:INK,cellPadding:{top:2.2,bottom:2.2,left:3,right:3}},headStyles:{fillColor:NAVY,textColor:255,fontStyle:"bold",fontSize:8.5},
+  styles:{font:"helvetica",fontSize:9,textColor:INK,cellPadding:{top:2.2,bottom:2.2,left:3,right:3}},headStyles:{fillColor:CHAR,textColor:255,fontStyle:"bold",fontSize:8.5},
   alternateRowStyles:{fillColor:TINT},...opt});return doc.lastAutoTable.finalY};
-function section(doc,y,t){const H=doc.internal.pageSize.getHeight();if(y>H-40){doc.addPage();y=20}doc.setFont("helvetica","bold");doc.setFontSize(12);doc.setTextColor(...INK);doc.text(t,14,y);doc.setDrawColor(...BLUE);doc.setLineWidth(.8);doc.line(14,y+2,26,y+2);return y+7}
+function section(doc,y,t){const H=doc.internal.pageSize.getHeight();if(y>H-40){doc.addPage();y=20}doc.setFont("helvetica","bold");doc.setFontSize(12);doc.setTextColor(...INK);doc.text(t,14,y);doc.setDrawColor(...RED);doc.setLineWidth(.8);doc.line(14,y+2,26,y+2);return y+7}
 const periodLabel=p=>{const [a,b]=range(p);return p==="All time"?"All time":`${p} · ${fmtDate(a)} – ${fmtDate(b)}`};
 
 async function buildPdf(kind,pid){
-  const J=await pdfLib(),img=await headImg(),doc=new J({unit:"mm",format:"a4"}),W=doc.internal.pageSize.getWidth();
+  const J=await pdfLib(),doc=new J({unit:"mm",format:"a4"}),W=doc.internal.pageSize.getWidth();
   const period=kind==="card"&&S.player!=null?S.period:S.dlPeriod,rg=range(period),doms=domainsWithData(),PL=periodLabel(period);
   let y,file;
   if(kind==="card"){
     const c=cardData(pid,period),p=c.p;
-    y=pdfHeader(doc,img,"Player report card",p.name,[p.ag,p.group,p.adm?"Adm. "+p.adm:"",PL].filter(Boolean).join("  ·  "));
-    const boxes=[["Rank in "+p.ag,ord(c.oAge),"of "+c.nAge],["Overall rank",ord(c.oAll),"of "+c.n],["Total points",String(c.total),"in total domains"],["Ahead of",c.ahead+"%","of players"]];
-    const bw=(W-28-9)/4;boxes.forEach(([l,v,s],i)=>{const x=14+i*(bw+3);doc.setFillColor(...TINT);doc.roundedRect(x,y,bw,24,3,3,"F");
-      doc.setFontSize(7.5);doc.setTextColor(...MUTE);doc.text(l.toUpperCase(),x+4,y+6);doc.setFont("helvetica","bold");doc.setFontSize(16);doc.setTextColor(...NAVY);doc.text(v,x+4,y+15.5);
-      doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...MUTE);doc.text(s,x+4,y+20.5)});
-    y=section(doc,y+34,"Scores and ranks by domain");
+    y=await posterHeader(doc,c,PL);
+    doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(...INK);doc.text(`Ahead of ${c.ahead}% of players`,14,y);
+    doc.setFont("helvetica","normal");doc.setTextColor(...MUTE);doc.text([p.adm?"Adm. "+p.adm:"",p.gender||""].filter(Boolean).join("  ·  "),W-14,y,{align:"right"});
+    y=section(doc,y+10,"Scores and ranks by domain");
     y=tbl(doc,y,["Domain","Points","This week","Best week","Rank in "+p.ag,"Rank of all"],c.doms.map(x=>[x.d+(x.counts?"":" *"),x.pts,x.week,x.best,ord(x.rAge),ord(x.rAll)]),{columnStyles:{1:{halign:"right"},2:{halign:"right"},3:{halign:"right"},4:{halign:"right"},5:{halign:"right"}}});
     if(c.doms.some(x=>!x.counts)){doc.setFontSize(7.5);doc.setTextColor(...MUTE);doc.text("* not added to the overall total",14,y+4.5);y+=4}
     y=section(doc,y+10,"Juggling best counts");
@@ -74,35 +98,35 @@ async function buildPdf(kind,pid){
       const x0=14+col*(cw+4);doc.setFillColor(...TINT);doc.roundedRect(x0,y,cw,ch,3,3,"F");doc.setFontSize(8.5);doc.setTextColor(...INK);doc.text(x.d,x0+4,y+6);
       const ch2=x.w.at(-1)-x.w.at(-2);doc.setTextColor(...(ch2>=0?[30,150,60]:[200,60,50]));doc.text((ch2>=0?"+":"")+ch2,x0+cw-4,y+6,{align:"right"});
       const mx=Math.max(...x.w,1),px=i2=>x0+5+i2*(cw-10)/(x.w.length-1),py=v=>y+ch-5-(v/mx)*(ch-15);
-      doc.setDrawColor(...BLUE);doc.setLineWidth(.7);for(let k=1;k<x.w.length;k++)doc.line(px(k-1),py(x.w[k-1]),px(k),py(x.w[k]));
-      doc.setFillColor(...LIME);doc.circle(px(x.w.length-1),py(x.w.at(-1)),1.2,"F")});
+      doc.setDrawColor(...ORANGE);doc.setLineWidth(.7);for(let k=1;k<x.w.length;k++)doc.line(px(k-1),py(x.w[k-1]),px(k),py(x.w[k]));
+      doc.setFillColor(...RED);doc.circle(px(x.w.length-1),py(x.w.at(-1)),1.2,"F")});
     y+=ch+4;
     if(S.notes&&c.note){y=section(doc,y+8,"Coach note");doc.setFontSize(10);doc.setTextColor(...INK);const lines=doc.splitTextToSize(c.note,W-36);
       doc.setFillColor(...TINT);doc.roundedRect(14,y,W-28,lines.length*5+8,3,3,"F");doc.text(lines,18,y+7)}
     file=`${p.name} report card.pdf`;
   }else if(kind==="overall"){
-    y=pdfHeader(doc,img,"Overall leaderboard","Academy rankings",PL);
+    y=pdfHeader(doc,"Overall leaderboard","Academy rankings",PL);
     const list=rankList("Overall","All",rg);
     tbl(doc,y,["#","Player","Age","Group","Overall",...doms],list.map(r=>[r.r,r.p.name,r.p.ag,r.p.group||"",r.s,...doms.map(d=>score(r.p.id,d,rg))]),{styles:{fontSize:doms.length>6?7.5:9},columnStyles:{4:{fontStyle:"bold"}}});
     file="Overall leaderboard.pdf";
   }else if(kind==="age"){
-    y=pdfHeader(doc,img,"Leaderboard by age group","Age group rankings",PL);
+    y=pdfHeader(doc,"Leaderboard by age group","Age group rankings",PL);
     ageGroups().forEach(ag=>{y=section(doc,y+2,ag);y=tbl(doc,y,["#","Player","Group","Overall",...doms],rankList("Overall",ag,rg).map(r=>[r.r,r.p.name,r.p.group||"",r.s,...doms.map(d=>score(r.p.id,d,rg))]),{styles:{fontSize:doms.length>6?7.5:9}})+8});
     file="Leaderboard by age group.pdf";
   }else if(kind==="domains"){
-    y=pdfHeader(doc,img,"Domain rankings","Who leads each domain",PL);
+    y=pdfHeader(doc,"Domain rankings","Who leads each domain",PL);
     doms.forEach((d,i)=>{if(i){doc.addPage();y=20}y=section(doc,y,d+(counts(d)?"":" (not in overall total)"));
       tbl(doc,y,["#","Player","Age","Group","Points","Rank in age group"],rankList(d,"All",rg).map(r=>[r.r,r.p.name,r.p.ag,r.p.group||"",r.s,ord(rankOf(r.p.id,d,r.p.ag,rg))]))});
     file="Domain rankings.pdf";
   }else{
-    y=pdfHeader(doc,img,"Day sheets","Points by date",PL);
+    y=pdfHeader(doc,"Day sheets","Points by date",PL);
     const dates=Object.keys(DAYS).filter(d=>inR(d,rg)&&markedOn(d).length).sort();
     if(!dates.length){doc.setFontSize(11);doc.setTextColor(...INK);doc.text("No points saved in this period.",14,y+6)}
     dates.forEach(dt=>{y=section(doc,y+4,fmtDate(dt)+" "+dt.slice(0,4));const day=DAYS[dt];
       markedOn(dt).forEach(d=>{const as=d==="Special"?(day.specials||[]):(CFG.acts[d]||[]);const m=day.marks[d]||{};
         const ids=new Set(as.map(a=>a.id));Object.values(m).forEach(r=>Object.keys(r||{}).forEach(k=>{if(!ids.has(k)){ids.add(k);as.push({id:k,name:"(removed)"})}}));
         const rows=active().filter(p=>m[p.id]&&Object.keys(m[p.id]).length).map(p=>[p.name,...as.map(a=>m[p.id][a.id]??""),sumRow(m[p.id])]);
-        doc.setFontSize(9.5);doc.setTextColor(...BLUE);doc.text(d,14,y+1);
+        doc.setFontSize(9.5);doc.setTextColor(...RED);doc.text(d,14,y+1);
         y=tbl(doc,y+3,["Player",...as.map(a=>(a.name||"Special")+(a.max!=null?" /"+a.max:"")),"Total"],rows,{styles:{fontSize:as.length>6?7:8.5},columnStyles:{0:{cellWidth:34}}})+6})});
     file="Day sheets.pdf";
   }
