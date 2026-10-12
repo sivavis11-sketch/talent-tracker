@@ -1,7 +1,7 @@
 // Offline support: the app's own files come from the cache (refreshed in the
 // background); fonts and PDF libraries are cached on first use. Calls to the
 // Google Apps Script are never cached.
-const VERSION = "tt-v2";
+const VERSION = "tt-v3";
 const SHELL = ["./", "index.html", "app.css", "manifest.webmanifest",
   "js/icons.js", "js/core.js", "js/views.js", "js/store.js", "js/actions.js",
   "img/p-stand.webp", "img/p-dribble.webp", "img/p-juggle.webp", "img/p-celebrate.webp", "img/p-header.webp", "img/p-kick.webp",
