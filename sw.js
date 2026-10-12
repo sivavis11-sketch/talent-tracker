@@ -1,10 +1,11 @@
 // Offline support: the app's own files come from the cache (refreshed in the
 // background); fonts and PDF libraries are cached on first use. Calls to the
 // Google Apps Script are never cached.
-const VERSION = "tt-v1";
+const VERSION = "tt-v2";
 const SHELL = ["./", "index.html", "app.css", "manifest.webmanifest",
   "js/icons.js", "js/core.js", "js/views.js", "js/store.js", "js/actions.js",
-  "img/home.jpg", "img/points.jpg", "img/setup.jpg", "img/rank.jpg", "img/downloads.jpg", "img/report.jpg", "img/pdfhead.jpg", "img/ball.webp",
+  "img/p-stand.webp", "img/p-dribble.webp", "img/p-juggle.webp", "img/p-celebrate.webp", "img/p-header.webp", "img/p-kick.webp",
+  "img/pdf-stand.png", "img/pdf-kick.png", "img/ball.webp",
   "icons/icon-192.png", "icons/favicon.png"];
 const RUNTIME = /^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net)\//;
 
