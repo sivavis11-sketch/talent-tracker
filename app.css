@@ -246,4 +246,59 @@ body[data-v=home] nav.tabs{display:none}
 .vnav{width:76px;flex:none;flex-direction:column;border-radius:38px;padding:12px 0;gap:6px;min-height:200px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(100px + env(safe-area-inset-bottom,0px));background:var(--card);color:var(--ink);padding:11px 18px;border-radius:18px;font-weight:500;max-width:calc(100% - 32px);z-index:9;text-align:center;line-height:1.35;box-shadow:var(--drop),inset 0 0 0 1px #3A3A3A}
 
-@media (min-width:900px){body[data-v=points] .app{max-width:980px}}
+/* on a phone the column wrappers disappear and the screen stacks top to bottom */
+.cols,.col{display:contents}
+
+/* computer: the nav pill stands up on the left of every screen, and each screen spreads into its own two columns */
+@media (min-width:1000px){
+  .app{max-width:1280px;padding-left:120px}
+  main{padding:40px 40px 48px;gap:22px}
+  body[data-v=connect] .app{max-width:640px;padding-left:0}
+  nav.tabs{top:0;bottom:0;right:auto;width:120px;padding:0;align-items:center;left:max(0px,calc(50% - 640px))}
+  nav.tabs .nav{flex-direction:column;width:76px;height:auto;min-height:340px;border-radius:38px;padding:16px 0;gap:14px}
+  body[data-v=home] nav.tabs{display:flex}
+  .vnav{display:none}
+  .nav button:not([aria-current="page"]):hover{background:rgba(255,255,255,.22)}
+  .toast{bottom:32px}
+  .cols{display:grid;gap:28px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:22px;min-width:0}
+  .chips{flex-wrap:wrap;white-space:normal;overflow:visible;margin:0;padding:0;row-gap:6px}
+  button.stat,.pc,.pod,.tile:not([disabled]),.dgrid button,.gbtn:not([disabled]),.cbtn:not([disabled]),.ranks .row{transition:transform .15s}
+  button.stat:hover,.pc:hover,.pod:hover,.tile:not([disabled]):hover,.dgrid button:hover,.gbtn:not([disabled]):hover,.cbtn:not([disabled]):hover{transform:translateY(-2px)}
+  .ranks .row:hover{background:#2C2C2C}
+
+  /* Home: numbers and week on the left, a tall pair of top-player cards on the right */
+  .cols.home{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+  .cols.home .bottom,.cols.home .tops{height:100%}
+  .cols.home .topcards{flex:1}
+  .cols.home .pc{height:100%;min-height:360px}
+  .cols.home .pc img{height:400px;top:10px}
+  .cols.home .pc .nm{font-size:26px}
+  .week .rings{gap:40px}
+
+  /* Mark points: group and domain pickers in a side column, the wide table on the right */
+  .cols.points{grid-template-columns:300px minmax(0,1fr)}
+  .cols.points .dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+  /* Challenges: list on the left, adding and switches on the right */
+  .cols.setup{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+
+  /* Leaderboard: big podium on the left, filters then the rest of the table on the right */
+  .cols.rank{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+  .cols.rank .filters{order:-1;flex-wrap:wrap;row-gap:4px}
+  .cols.rank .podium{height:420px;position:sticky;top:40px}
+  .cols.rank .pod.first{height:410px}.cols.rank .pod.first img{height:300px}
+  .cols.rank .pod.second{height:300px}.cols.rank .pod.second img{height:210px}
+  .cols.rank .pod.third{height:260px}.cols.rank .pod.third img{height:180px}
+
+  /* Report card: player and numbers on the left, notes, ranks and trends on the right */
+  .cols.report{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .cols.report .hero{height:280px}.cols.report .hero img{height:320px}
+  .cols.report .trend{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+  /* Downloads: report-card banner and picker side by side, the four lists in one row */
+  .dtiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+  .dtiles .tile.wide{grid-column:span 2;height:200px}
+  .dtiles>.card.pad{justify-content:center}
+  .tile{height:160px}
+}

@@ -118,6 +118,20 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   ok(await pg.isVisible('.pc[data-player]'), 'Home shows this week\'s top players');
   await pg.click('.pc[data-player]'); await wait(300);
   ok(await pg.isVisible('.hero .name') && await pg.isVisible('nav.tabs [data-tab=home]'), 'a top player card opens that player\'s report card');
+  // computer screen: the nav stands on the left and every screen uses two columns, with nothing spilling sideways
+  await pg.setViewportSize({ width: 1366, height: 860 });
+  for (const [t, cls] of [['home', 'home'], ['points', 'points'], ['setup', 'setup'], ['rank', 'rank'], ['downloads', null]]) {
+    await pg.click(`nav.tabs [data-tab=${t}]`); await wait(250); await shot('9-desktop-' + t);
+    const m = await pg.evaluate(c => {
+      const nb = document.querySelector('nav.tabs .nav').getBoundingClientRect(), g = c && document.querySelector('.cols.' + c);
+      return { side: nb.height > nb.width && nb.left < 200, cols: g ? getComputedStyle(g).gridTemplateColumns.split(' ').length : 2, wide: document.documentElement.scrollWidth <= innerWidth };
+    }, cls);
+    ok(m.side && m.cols === 2 && m.wide, 'computer layout for ' + t + ' ' + JSON.stringify(m));
+  }
+  await pg.click('nav.tabs [data-tab=rank]'); await pg.click('.pod.first'); await wait(300); await shot('9-desktop-report');
+  ok(await pg.evaluate(() => getComputedStyle(document.querySelector('.cols.report')).gridTemplateColumns.split(' ').length === 2), 'computer layout for the report card');
+  await pg.setViewportSize({ width: 390, height: 844 }); await wait(200);
+  ok(await pg.evaluate(() => getComputedStyle(document.querySelector('.cols')).display === 'contents' && document.documentElement.scrollWidth <= innerWidth), 'phone layout still stacks in one column');
   ok(errs.length === 0, 'no page errors ' + JSON.stringify(errs));
   console.log('script calls:', calls);
   await br.close(); server.close();
