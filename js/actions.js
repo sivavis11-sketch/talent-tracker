@@ -146,7 +146,10 @@ async function makePdf(kind,pid){
 
 // ================= events =================
 document.addEventListener("click",e=>{
+  // the date sits under an invisible date field; computers don't open its calendar on a plain click, so open it ourselves
+  const wd=e.target.closest(".when");const di=wd&&wd.querySelector("input[type=date]");if(di&&di.showPicker){try{di.showPicker()}catch(_){}}
   const b=e.target.closest("button");if(!b||b.disabled)return;const d=b.dataset;
+  if((d.tab==="points"||d.go==="points")&&S.tab!=="points"){TODAY=iso(new Date());openPoints(TODAY)}
   if(d.tab){S.tab=d.tab;S.player=null;render();scrollTo(0,0);return}
   if(d.go){S.player=null;S.tab=d.go;if(d.mode)S.setMode=d.mode;if(d.pick&&!S.doms.includes(d.pick))S.doms=[...S.doms,d.pick];render();scrollTo(0,0);return}
   if(d.set){S[d.set]=d.val;if(d.set==="grp"){try{localStorage.setItem("tt-grp",d.val)}catch(_){}}render();return}
@@ -205,7 +208,7 @@ document.addEventListener("input",e=>{const t=e.target;
   if(t.id==="np-group")S.np.group=t.value;
 });
 document.addEventListener("change",e=>{const t=e.target;
-  if(t.id==="date"&&t.value){S.date=t.value;render();return}
+  if(t.id==="date"&&t.value){openPoints(t.value);render();return}
   if(t.id==="np-dob")S.np.dob=t.value;
   if(t.id==="dlplayer")S.dlp=t.value;
   if(t.id==="note"&&S.player){NOTES[S.player]=t.value;write("notes/"+S.player,{text:t.value.slice(0,4000)});return}
@@ -213,6 +216,7 @@ document.addEventListener("change",e=>{const t=e.target;
   if(t.dataset.spmax!=null){const x=specials().find(s=>s.id===t.dataset.spmax);if(x){const v=parseInt(t.value,10);x.max=isNaN(v)?null:v;queueDay(S.date,300);render()}}
 });
 addEventListener("pagehide",()=>{if(dirty.size)flushAll()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&iso(new Date())!==TODAY){const was=TODAY;TODAY=iso(new Date());if(S.tab==="points"&&S.date===was)openPoints(TODAY);render()}});
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&dirty.size)flushAll()});
 
 // ================= start =================

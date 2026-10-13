@@ -7,6 +7,7 @@ const { load } = require('./gas-mock.cjs');
 const ROOT = path.join(__dirname, '..'), SHOTS = process.argv[2] || '/tmp/tt-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 let fails = 0;
+const CFG_ORDER = m => ['Daily', 'Juggling', 'Flexibility', 'Core', 'Crossbar', 'Foot tennis', 'Special'].filter(d => m.includes(d)).join();
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 
 const head = ['AdmissionNumber', 'PlayerName', 'Sport', 'Group', 'Gender', 'DateOfBirth', 'PhotoUrl', 'Active', 'ParentPhone', 'MedicalNotes'];
@@ -100,6 +101,16 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   netDown = false; await pg.evaluate(() => dispatchEvent(new Event('online'))); await wait(1200);
   ok((await pg.textContent('#savestate')).includes('All changes saved'), 'offline change sent when back online');
 
+  // Mark Points opens clean: back on a date with points it shows those domains; an empty date shows an empty Daily sheet
+  await pg.click('nav [data-tab=home]'); await wait(200); await pg.click('[data-go=points]'); await wait(300);
+  const back = await pg.evaluate(() => ({ doms: S.doms, marked: markedOn(TODAY), filled: [...document.querySelectorAll('input[data-cell]')].filter(i => i.value).length }));
+  ok(back.doms.join() === CFG_ORDER(back.marked) && back.filled > 0, 'reopening Mark Points shows the saved domains for today ' + JSON.stringify(back));
+  await pg.evaluate(() => { window.__picked = 0; HTMLInputElement.prototype.showPicker = function () { window.__picked++; }; });
+  await pg.click('#date'); ok(await pg.evaluate(() => window.__picked > 0), 'tapping the date opens the calendar');
+  const past = await pg.evaluate(() => addDays(TODAY, -3));
+  await pg.fill('#date', past); await pg.dispatchEvent('#date', 'change'); await wait(300);
+  const empty = await pg.evaluate(() => ({ date: S.date, doms: S.doms, filled: [...document.querySelectorAll('input[data-cell]')].filter(i => i.value).length }));
+  ok(empty.date === past && empty.doms.join() === 'Daily' && empty.filled === 0, 'a date with no points opens as an empty Daily sheet ' + JSON.stringify(empty));
   await pg.click('nav [data-tab=rank]'); await wait(300); await shot('4-rank');
   await pg.click('.pod.first'); await wait(300);
   await pg.fill('#note', 'Strong week.'); await pg.press('#note', 'Tab'); await wait(800);
