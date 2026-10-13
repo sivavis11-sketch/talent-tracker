@@ -88,10 +88,14 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   ok(!!dayRow && JSON.parse(dayRow[1]).marks.Flexibility, 'day saved in the Days tab');
   ok(data.getSheetByName('Points').rows.length > 10, 'readable Points tab filled (' + (data.getSheetByName('Points').rows.length - 1) + ' rows)');
   ok((await pg.textContent('#savestate')).includes('All changes saved'), 'status says all saved');
+  ok(await pg.isVisible('#done.ok .mark') && (await pg.textContent('#done')).includes('Points saved') && (await pg.textContent('[data-act=save]')).includes('Saved'), 'Save day shows a big "Points saved" tick and the button says Saved');
+  await (await pg.$$('input[data-cell]'))[1].fill('3'); ok((await pg.textContent('[data-act=save]')).trim() === 'Save day', 'changing a score turns the button back to Save day');
 
   // offline: keep on device, send when back
   netDown = true; await pg.evaluate(() => dispatchEvent(new Event('offline')));
   const c0 = (await pg.$$('input[data-cell]'))[0]; await c0.fill('5'); await wait(1600);
+  await pg.click('[data-act=save]'); await wait(600);
+  ok(await pg.isVisible('#done.wait') && (await pg.textContent('#done')).includes('Saved on this phone'), 'Save day offline says it is kept on the phone');
   ok((await pg.textContent('#savestate')).includes('Offline'), 'offline change is kept on the phone');
   netDown = false; await pg.evaluate(() => dispatchEvent(new Event('online'))); await wait(1200);
   ok((await pg.textContent('#savestate')).includes('All changes saved'), 'offline change sent when back online');

@@ -3,6 +3,12 @@ const S={tab:"home",date:TODAY,doms:["Daily"],grp:(()=>{try{return localStorage.
   hdom:"Daily",htop:"This week",rdomain:"Overall",age:"All",period:"All time",dlPeriod:"This month",player:null,dlp:"",notes:true,np:{name:"",group:"",dob:""},sync:null,busy:""};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// big "points saved" sign after Save day: a gradient tick on success, an orange clock when kept offline, red on failure
+const TICKI='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+const WAITI='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>';
+function done(kind,head,sub){const d=$("#done");d.className="done "+kind;
+  d.innerHTML=`<div class="card"><span class="mark">${kind==="ok"?TICKI:kind==="wait"?WAITI:"!"}</span><b>${esc(head)}</b><span>${esc(sub)}</span></div>`;
+  d.hidden=false;clearTimeout(done.h);done.h=setTimeout(()=>d.hidden=true,kind==="ok"?2600:4200)}
 function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,3200)}
 const ord=n=>n?n+(["th","st","nd","rd"][(n%100-20)%10]||["th","st","nd","rd"][n%100]||"th"):"–";
 const fmtDate=d=>new Date(d+"T00:00").toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});
@@ -150,7 +156,7 @@ function pointsView(){
       <div style="flex:1"><span class="small">Out of</span><input type="text" inputmode="numeric" data-spmax="${x.id}" placeholder="No limit" value="${x.max??""}"></div>
       ${specials().length>1?`<button class="x" data-delsp="${x.id}" aria-label="Remove challenge ${i+1}">✕</button>`:""}</div>`).join("")}
     <button class="cbtn" data-act="addsp">+ Add another special challenge</button></div>`:""}`,`<div class="card sheet">${table}${sel.some(d=>acts(d).some(a=>a.max!=null))?`<div class="hint">Red box: more than the "out of" points.</div>`:""}</div>
-  <div class="savebar">${saveLine()}${sel.length&&ps.length?`<button class="gbtn" data-act="save">Save day</button>`:""}</div>
+  <div class="savebar">${saveLine()}${sel.length&&ps.length?`<button class="gbtn${S.saved===S.date?" ok":""}" data-act="save" ${S.busy==="save"?"disabled":""}>${S.busy==="save"?"Saving…":S.saved===S.date?"Saved ✓":"Save day"}</button>`:""}</div>
   <p class="small" style="margin:0">Points save as you type and add to each player's total.${sel.some(d=>!counts(d))?" "+sel.filter(d=>!counts(d)).join(", ")+" is not added to the total.":""} A green dot means that domain already has points on this date. Tap the date to change it.</p>`,"points")}`;
 }
 
