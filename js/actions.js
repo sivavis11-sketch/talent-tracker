@@ -34,7 +34,6 @@ async function pngData(src){
   return cache[src];
 }
 const CHAR=[43,43,43],GHOST=[58,58,58],RED=[239,62,54],ORANGE=[240,88,43],PURPLE=[142,45,116],INK=[30,30,30],MUTE=[120,120,120],TINT=[246,243,242];
-const POSTER=[142,14,25],PINK=[255,138,147];
 const alpha=(doc,o)=>doc.setGState(new doc.GState({opacity:o,"stroke-opacity":o}));
 // dark header for the list reports: ghost word, orange eyebrow, red→purple strip
 function pdfHeader(doc,eyebrow,title,sub){
@@ -47,26 +46,25 @@ function pdfHeader(doc,eyebrow,title,sub){
   doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(207,207,207);doc.text(sub,14,H-8);
   return H+10;
 }
-// red sports-poster header for the report card: giant surname behind the player cut-out, big stats on a dark band
-async function posterHeader(doc,c,PL){
-  const W=doc.internal.pageSize.getWidth(),H=122,p=c.p,[first,sur]=splitName(p.name);
-  doc.setFillColor(...POSTER);doc.rect(0,0,W,H,"F");
-  alpha(doc,.05);doc.setDrawColor(255,255,255);doc.setLineWidth(.2);for(let x=6;x<W;x+=6)doc.line(x,0,x,H);for(let y=6;y<H;y+=6)doc.line(0,y,W,y);
-  alpha(doc,.45);doc.setFillColor(214,40,52);doc.circle(W*.6,H*.48,62,"F");
-  alpha(doc,.3);doc.setFillColor(214,36,48);doc.rect(W*.44,0,W*.28,H,"F");alpha(doc,1);
-  doc.setFillColor(211,32,47);doc.rect(12,0,20,44,"F");doc.setFont("helvetica","bold");doc.setFontSize(17);doc.setTextColor(255,255,255);doc.text(c.oAge?"#"+c.oAge:"-",22,40,{align:"center"});
-  const cap=(t,v,y)=>{doc.setFont("helvetica","bold");doc.setFontSize(7.5);doc.setTextColor(255,255,255);doc.text(t.toUpperCase(),38,y,{charSpace:.6});if(v){doc.setTextColor(...PINK);doc.text(String(v).toUpperCase(),38,y+4.2,{charSpace:.6})}};
-  cap("< Player report card >","",10);cap("Age group",p.ag,20);if(p.group)cap("Group",p.group,32);cap(PL,"",46);
-  doc.setDrawColor(255,255,255);doc.setLineWidth(.3);alpha(doc,.75);const lx=W-34,ly=8;doc.rect(lx,ly,20,18);doc.line(lx,ly+18,lx+20,ly);doc.line(lx+10,ly+18,lx+10,ly+36);doc.line(lx+10,ly+36,lx+20,ly+36);doc.line(lx+20,ly+18,lx+20,ly+36);doc.line(lx+10,ly+36,lx+20,ly+18);alpha(doc,1);
-  let fs=130;doc.setFont("helvetica","bold");doc.setFontSize(fs);while(fs>40&&doc.getTextWidth(sur)>W-16){fs-=4;doc.setFontSize(fs)}
-  const base=H-30;doc.setTextColor(255,255,255);doc.text(sur,W-8,base,{align:"right"});
-  if(first){doc.setFont("helvetica","normal");doc.setFontSize(18);doc.setTextColor(...PINK);doc.text(first,W-10,base-fs*.3528*.74-3,{align:"right"})}
+// report card header, as on the app's report card: red→purple card with the player's name and cut-out, then three stat tiles
+async function cardHeader(doc,c,PL){
+  const W=doc.internal.pageSize.getWidth(),H=112,p=c.p,[first,sur]=splitName(p.name),x0=14,y0=12,cw=W-28,ch=62;
+  doc.setFillColor(...CHAR);doc.rect(0,0,W,H,"F");
+  doc.saveGraphicsState();doc.roundedRect(x0,y0,cw,ch,7,7,null);doc.clip();doc.discardPath();
+  const g=[[239,62,54],[201,58,85],[142,45,116]];for(let i=0;i<40;i++){const t=i/39,k=t<.55?t/.55:(t-.55)/.45,[a,b]=t<.55?[g[0],g[1]]:[g[1],g[2]];doc.setFillColor(...a.map((v,j)=>Math.round(v+(b[j]-v)*k)));doc.rect(x0,y0+i*ch/40,cw,ch/40+.3,"F")}
+  alpha(doc,.12);doc.setFont("helvetica","bold");doc.setFontSize(110);doc.setTextColor(255,255,255);doc.text("#"+(c.oAge||"-"),x0+cw-4,y0+36,{align:"right"});alpha(doc,1);
   const img=await pngData("img/pdf-"+(/^f/i.test(p.gender||"")?"kick":"stand")+".png");
-  if(img){const ip=doc.getImageProperties(img),ih=H-10,iw=ih*ip.width/ip.height;doc.addImage(img,"PNG",W*.55-iw/2,H-ih,iw,ih)}
-  alpha(doc,.78);doc.setFillColor(60,0,8);doc.rect(W*.42,H-26,W*.58,26,"F");alpha(doc,1);
-  [[String(c.total),"Points"],[ord(c.oAge),"In "+p.ag+" of "+c.nAge],[ord(c.oAll),"Overall of "+c.n]].forEach(([v,k],i)=>{const x=W*.42+W*.58*(i+.5)/3;
-    doc.setFont("helvetica","normal");doc.setFontSize(24);doc.setTextColor(255,255,255);doc.text(v,x,H-12,{align:"center"});doc.setFontSize(8);doc.setTextColor(...PINK);doc.text(k,x,H-5.5,{align:"center"})});
-  return H+12;
+  if(img){const ip=doc.getImageProperties(img),ih=ch+12,iw=ih*ip.width/ip.height;doc.addImage(img,"PNG",x0+cw-iw-8,y0+4,iw,ih)}
+  doc.restoreGraphicsState();
+  doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(255,210,122);doc.text("Report card  ·  "+PL,x0+8,y0+10);
+  doc.setFont("helvetica","bolditalic");doc.setTextColor(255,255,255);let fs=30;doc.setFontSize(fs);while(fs>16&&Math.max(doc.getTextWidth(first.toUpperCase()),doc.getTextWidth(sur.toUpperCase()))>cw*.55){fs-=2;doc.setFontSize(fs)}
+  doc.text([first,sur].filter(Boolean).map(x=>x.toUpperCase()),x0+8,y0+24,{lineHeightFactor:1});
+  doc.setFont("helvetica","bold");doc.setFontSize(8.5);let tx=x0+8;[(c.oAge?"#"+c.oAge+" in ":"")+p.ag,p.group].filter(Boolean).forEach(t=>{const tw=doc.getTextWidth(t)+8;alpha(doc,.25);doc.setFillColor(0,0,0);doc.roundedRect(tx,y0+ch-14,tw,7,3.5,3.5,"F");alpha(doc,1);doc.setTextColor(255,255,255);doc.text(t,tx+4,y0+ch-9.2);tx+=tw+3});
+  const chg=c.change==null?(c.cur?"New":"-"):(c.change>=0?"+":"")+c.change+"%",bw=(cw-8)/3;
+  [[String(c.total),"Total pts",[249,162,59]],[String(c.days),"Days",[239,62,54]],[chg,"vs last month",[249,162,59]]].forEach(([v,k,col],i)=>{const x=x0+i*(bw+4),y=y0+ch+6;
+    doc.setFillColor(39,39,39);doc.roundedRect(x,y,bw,24,5,5,"F");doc.setFont("helvetica","bold");doc.setFontSize(30);doc.setTextColor(...GHOST);doc.text(v,x+3,y+15);
+    doc.setFontSize(18);doc.setTextColor(...col);doc.text(v,x+5,y+13);doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(140,140,140);doc.text(k,x+5,y+20)});
+  return H+10;
 }
 function pdfFooters(doc){
   const n=doc.getNumberOfPages(),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
@@ -84,7 +82,7 @@ async function buildPdf(kind,pid){
   let y,file;
   if(kind==="card"){
     const c=cardData(pid,period),p=c.p;
-    y=await posterHeader(doc,c,PL);
+    y=await cardHeader(doc,c,PL);
     doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(...INK);doc.text(`Ahead of ${c.ahead}% of players`,14,y);
     doc.setFont("helvetica","normal");doc.setTextColor(...MUTE);doc.text([p.adm?"Adm. "+p.adm:"",p.gender||""].filter(Boolean).join("  ·  "),W-14,y,{align:"right"});
     y=section(doc,y+10,"Scores and ranks by domain");
@@ -207,7 +205,11 @@ addEventListener("pagehide",()=>{if(dirty.size)flushAll()});
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&dirty.size)flushAll()});
 
 // ================= start =================
-if("serviceWorker" in navigator&&location.protocol==="https:")addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
-document.body.insertAdjacentHTML("afterbegin",DEFS);
+if("serviceWorker" in navigator&&location.protocol==="https:"){
+  // when an update replaces an older copy of the app, reload once so the new screens show straight away
+  const had=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!reloaded&&!dirty.size){reloaded=true;location.reload()}});
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").then(r=>r.update()).catch(()=>{}));
+}
 render();
 if(CONN)startStore();
