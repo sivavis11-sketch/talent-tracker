@@ -175,14 +175,25 @@ document.addEventListener("click",e=>{
   if(a==="addplayer"){const n=S.np.name.trim();if(!n)return toast("Type the player's name.");
     const p={id:"m-"+uid(),name:n,group:S.np.group.trim(),dob:S.np.dob,active:true,source:"manual"};PLAYERS.push({...p,ag:ageGroup(p.dob)});bump();write("players/"+p.id,playerBody(p));
     S.np={name:"",group:S.np.group,dob:""};toast(`Added ${n}.`);render();return}
-  if(a==="save"){
+  if(a==="save"){if(S.busy)return;
     const m=dayOf(S.date).marks,ids=new Set();S.doms.forEach(x=>Object.entries(m[x]||{}).forEach(([id,r])=>{if(Object.keys(r||{}).length)ids.add(id)}));
     const over=document.querySelectorAll(".grid .box.over").length;
     if(!ids.size)return toast("Type points for at least one player.");
-    flushDay(S.date).then(()=>toast(saveErr?saveErr:`Saved points for ${ids.size} player${ids.size>1?"s":""} on ${fmtDate(S.date)}.${over?` ${over} score${over>1?"s are":" is"} above the set points (in red).`:""}`));return}
+    const date=S.date,who=`${ids.size} player${ids.size>1?"s":""} · ${fmtDate(date)}`,warn=over?` · ${over} above the set points`:"";
+    S.busy="save";S.saved=null;render();flushDay(date);
+    // wait until the sheet has really taken this day (write() may only queue it behind another save)
+    const t0=Date.now();(function chk(){
+      const left=!!OUTBOX["days/"+date],res=!left?(saveErr?"err":"ok"):!online?"wait":saveErr&&!draining?"err":Date.now()-t0>20000?"slow":null;
+      if(!res)return setTimeout(chk,150);
+      S.busy="";if(res==="ok")S.saved=date;render();
+      if(res==="ok")done("ok","Points saved",who+warn);
+      else if(res==="wait")done("wait","Saved on this phone","No signal now. It goes to your sheet when you're back online.");
+      else if(res==="slow")done("wait","Still saving…","Your sheet is slow to answer. Keep the app open for a moment.");
+      else done("err","Not saved",saveErr||"Your sheet didn't answer. Tap Save day again.");
+    })();return}
 });
 document.addEventListener("input",e=>{const t=e.target;
-  if(t.dataset.cell){const [dm,pid,aid]=t.dataset.cell.split("|");const v=t.value.replace(/\D/g,"").slice(0,6);if(v!==t.value)t.value=v;
+  if(t.dataset.cell){S.saved=null;const sb=document.querySelector('[data-act=save]');if(sb&&!S.busy){sb.classList.remove("ok");sb.textContent="Save day"}const [dm,pid,aid]=t.dataset.cell.split("|");const v=t.value.replace(/\D/g,"").slice(0,6);if(v!==t.value)t.value=v;
     const m=dayOf(S.date).marks,dd=(m[dm]=m[dm]||{});dd[pid]=dd[pid]||{};if(v==="")delete dd[pid][aid];else dd[pid][aid]=+v;if(!Object.keys(dd[pid]).length)delete dd[pid];
     const a=acts(dm).find(x=>x.id===aid);t.classList.toggle("over",!!a&&a.max!=null&&+v>a.max);bump();queueDay(S.date);
     const tt=document.querySelector(`[data-tt="${CSS.escape(pid)}"]`);if(tt)tt.textContent=S.doms.filter(x=>CFG.domains.includes(x)&&counts(x)).reduce((s,x)=>s+sumRow((m[x]||{})[pid]),0);return}
