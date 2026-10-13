@@ -27,6 +27,10 @@ ok(all0.players.every(p => !('ParentPhone' in p) && !('parentphone' in p) && !('
 ok(all0.players.find(p => p.id === 'a-T107').active === false, 'inactive player marked inactive');
 ok(all0.players[0].dob === '2012-01-10', 'date of birth comes back as yyyy-mm-dd');
 
+// ---- installed app updates: own files come fresh from the network, never stale from the HTTP cache ----
+const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+ok(/cache: "reload"/.test(swSrc) && /fetch\(req, \{ cache: "no-cache" \}\)/.test(swSrc), 'service worker fetches the app fresh so updates show on the next open');
+
 // ---- serve the app ----
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer((q, r) => {
@@ -62,7 +66,7 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   await pg.fill('#c-api', API); await pg.fill('#c-key', 'nope'); await pg.click('[data-act=connect]'); await wait(400);
   ok((await pg.textContent('#view')).includes("key doesn't match"), 'wrong key explains the problem');
   await pg.fill('#c-key', KEY); await pg.click('[data-act=connect]'); await wait(800);
-  ok(await pg.isVisible('.greet') && !(await pg.isVisible('#c-api')), 'connects and opens Home');
+  ok(await pg.isVisible('.me') && !(await pg.isVisible('#c-api')), 'connects and opens Home');
   await shot('2-home');
 
   await pg.click('nav [data-tab=points]'); await wait(200);
@@ -110,9 +114,10 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   const after = await pg.evaluate(() => ({ n: active().length, hidden: PLAYERS.find(p => p.id === 'a-T100').hidden, manual: PLAYERS.some(p => p.name === 'Test Manual'), days: Object.keys(DAYS).length }));
   ok(after.hidden === true && after.manual && after.n === 7 && after.days >= 1, 'after reload: hidden player, manual player and points all kept ' + JSON.stringify(after));
   await pg.click('nav [data-tab=home]'); await wait(300); await shot('8-home-week');
-  ok(await pg.isVisible('.poster[data-player]'), 'Home shows the Player of the week poster');
-  await pg.click('.poster[data-player]'); await wait(300);
-  ok(await pg.isVisible('.poster .sur') && await pg.isVisible('[data-act=back]'), 'Player of the week opens that player\'s poster report card');
+  ok(await pg.isVisible('.vnav [data-tab=rank]') && !(await pg.isVisible('nav.tabs')), 'Home shows the side menu instead of the bottom bar');
+  ok(await pg.isVisible('.pc[data-player]'), 'Home shows this week\'s top players');
+  await pg.click('.pc[data-player]'); await wait(300);
+  ok(await pg.isVisible('.hero .name') && await pg.isVisible('nav.tabs [data-tab=home]'), 'a top player card opens that player\'s report card');
   ok(errs.length === 0, 'no page errors ' + JSON.stringify(errs));
   console.log('script calls:', calls);
   await br.close(); server.close();
