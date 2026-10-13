@@ -156,8 +156,7 @@ function pointsView(){
       <div style="flex:1"><span class="small">Out of</span><input type="text" inputmode="numeric" data-spmax="${x.id}" placeholder="No limit" value="${x.max??""}"></div>
       ${specials().length>1?`<button class="x" data-delsp="${x.id}" aria-label="Remove challenge ${i+1}">✕</button>`:""}</div>`).join("")}
     <button class="cbtn" data-act="addsp">+ Add another special challenge</button></div>`:""}`,`<div class="card sheet">${table}${sel.some(d=>acts(d).some(a=>a.max!=null))?`<div class="hint">Red box: more than the "out of" points.</div>`:""}</div>
-  <div class="savebar">${saveLine()}${sel.length&&ps.length?`<button class="gbtn${S.saved===S.date?" ok":""}" data-act="save" ${S.busy==="save"?"disabled":""}>${S.busy==="save"?"Saving…":S.saved===S.date?"Saved ✓":"Save day"}</button>`:""}</div>
-  <p class="small" style="margin:0">Points save as you type and add to each player's total.${sel.some(d=>!counts(d))?" "+sel.filter(d=>!counts(d)).join(", ")+" is not added to the total.":""} A green dot means that domain already has points on this date. Tap the date to change it.</p>`,"points")}`;
+  <div class="savebar">${saveLine()}${sel.length&&ps.length?`<button class="gbtn${S.saved===S.date?" ok":""}" data-act="save" ${S.busy==="save"?"disabled":""}>${S.busy==="save"?"Saving…":S.saved===S.date?"Saved ✓":"Save day"}</button>`:""}</div>`,"points")}`;
 }
 
 function setupView(){
