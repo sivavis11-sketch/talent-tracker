@@ -2,7 +2,7 @@
   "name": "Talent Tracker",
   "short_name": "Talent",
   "description": "Football talent points, rankings and player report cards.",
-  "id": "./",
+  "id": "/talent-tracker/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
