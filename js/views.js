@@ -16,7 +16,7 @@ const cutImg=p=>`img/p-${cutFor(p)}.webp`;
 
 // ---------- shared pieces ----------
 const TABS=[["home","Home"],["points","Mark points"],["setup","Challenges"],["rank","Leaderboard"],["downloads","Downloads"]];
-const navBtns=()=>TABS.map(([t,l])=>`<button data-tab="${t}" aria-label="${l}" aria-current="${t===S.tab&&S.player==null?"page":"false"}">${NAVI[t]}</button>`).join("");
+const navBtns=()=>TABS.map(([t,l])=>`<button data-tab="${t}" aria-label="${l}" title="${l}" aria-current="${t===S.tab&&S.player==null?"page":"false"}">${NAVI[t]}</button>`).join("");
 const when=(date,sm,input)=>{const d=new Date(date+"T00:00");
   return `<${input?"label":"div"} class="when${sm?" sm":""}"><div class="wd">${d.toLocaleDateString("en-IN",{weekday:"long"})}</div><div class="dt"><span class="rd">${d.getDate()}</span> <span class="mo">${d.toLocaleDateString("en-IN",{month:"short"}).toUpperCase()}${sm?"":"’"+String(d.getFullYear()).slice(2)}</span></div>${input||""}</${input?"label":"div"}>`};
 const title=(ghost,a,b,side="")=>`<div class="title"><span class="ghost" aria-hidden="true">${ghost}</span><h1><span class="or">${a}</span>${b}</h1>${side}</div>`;
@@ -24,6 +24,8 @@ const backBtn=attr=>`<button class="back" ${attr} aria-label="Back">${BACKI}</bu
 const chips=(label,key,opts,cur,name=x=>x,cls="")=>`<div class="chips ${cls}">${label?`<span class="lb">${label}</span><span class="bar"></span>`:""}${opts.map(o=>`<button data-set="${key}" data-val="${esc(o)}" aria-pressed="${o===cur}">${esc(name(o))}</button>`).join("")}</div>`;
 const stat=(v,k,cls,tag="div",attr="")=>`<${tag} class="card stat" ${attr}><span class="ghost" aria-hidden="true">${esc(v)}</span><div class="v ${cls} num">${esc(v)}</div><div class="k">${k}</div></${tag}>`;
 const noPlayers=()=>`<div class="card pad stack"><div class="rowx"><span class="ldot wait"></span><h3>Add your players</h3></div><span class="small">${LOADED.players||!CONN?"Bring in your football players from your sports app sheet, or add them by hand.":"Loading your players…"}</span>${LOADED.players||!CONN?`<button class="gbtn" data-go="setup" data-mode="players">Players</button>`:""}</div>`;
+// two columns on a computer; on a phone the wrappers vanish and everything stacks in this order
+const cols=(a,b,cls="")=>`<div class="cols ${cls}"><div class="col">${a}</div><div class="col">${b}</div></div>`;
 const saveLine=()=>`<div class="saved" id="savestate"></div>`;
 const PERIODS=["This week","This month","Last 3 months","All time"];
 const PSHORT={"This week":"Week","This month":"Month","Last 3 months":"3 months","All time":"All time"};
@@ -91,7 +93,7 @@ function homeView(){
     ${when(TODAY)}
   </div>
   ${n?"":noPlayers()}
-  <div class="tiles">
+  ${cols(`<div class="tiles">
     ${stat(st.touched+"/"+n,"Marked today"+REFRESHI,"or")}
     <button class="card stat" data-go="points" aria-label="Mark points for ${esc(grp)}"><span class="ghost" aria-hidden="true">${esc(shortGroup(grp))}</span><div class="v rd">${esc(shortGroup(grp))}</div>
       <div class="go"><span class="n pit">${S.doms.length}</span><b>${esc(dom0)}</b>${PLAYI.replace("<svg",'<svg width="18" height="18"')}</div></button>
@@ -114,14 +116,13 @@ function homeView(){
       ${g1?"":`<span class="small">Week progress shows once your players have groups.</span>`}
     </div>
   </div>
-  ${installRow()}
-  <div class="bottom">
+  ${installRow()}`,`<div class="bottom">
     <nav class="nav vnav" aria-label="Sections">${navBtns()}</nav>
     <div class="tops">
       ${chips("Top","htop",["This week","This month"],S.htop,x=>PSHORT[x],"sm")}
       <div class="topcards">${pc(tops[0],0)}${pc(tops[1],1)}</div>
     </div>
-  </div>`;
+  </div>`,"home")}`;
 }
 
 function pointsView(){
@@ -142,16 +143,15 @@ function pointsView(){
   return `
   <div class="head">${backBtn('data-tab="home"')}${when(S.date,true,`<input type="date" id="date" value="${S.date}" max="${TODAY}" aria-label="Change date">`)}</div>
   ${title("POINTS","Mark"," Points")}
-  ${groups().length?chips("Group","grp",[...groups(),"All"],S.grp,x=>x==="All"?"All groups":x):`<span class="small">Groups appear here after you sync or add players.</span>`}
+  ${cols(`${groups().length?chips("Group","grp",[...groups(),"All"],S.grp,x=>x==="All"?"All groups":x):`<span class="small">Groups appear here after you sync or add players.</span>`}
   <div class="dgrid">${CFG.domains.map(d=>`<button data-dom="${esc(d)}" aria-pressed="${sel.includes(d)}">${esc(d)}${marked.includes(d)?'<span class="dot" aria-label="has points on this date"></span>':""}</button>`).join("")}</div>
   ${sel.includes("Special")?`<div class="card pad stack"><h3>Special challenges</h3>
     ${specials().map((x,i)=>`<div class="rowx" style="align-items:flex-end"><div style="flex:2"><span class="small">Challenge ${i+1}</span><input type="text" data-spname="${x.id}" placeholder="What was it?" value="${esc(x.name)}"></div>
       <div style="flex:1"><span class="small">Out of</span><input type="text" inputmode="numeric" data-spmax="${x.id}" placeholder="No limit" value="${x.max??""}"></div>
       ${specials().length>1?`<button class="x" data-delsp="${x.id}" aria-label="Remove challenge ${i+1}">✕</button>`:""}</div>`).join("")}
-    <button class="cbtn" data-act="addsp">+ Add another special challenge</button></div>`:""}
-  <div class="card sheet">${table}${sel.some(d=>acts(d).some(a=>a.max!=null))?`<div class="hint">Red box: more than the "out of" points.</div>`:""}</div>
+    <button class="cbtn" data-act="addsp">+ Add another special challenge</button></div>`:""}`,`<div class="card sheet">${table}${sel.some(d=>acts(d).some(a=>a.max!=null))?`<div class="hint">Red box: more than the "out of" points.</div>`:""}</div>
   <div class="savebar">${saveLine()}${sel.length&&ps.length?`<button class="gbtn" data-act="save">Save day</button>`:""}</div>
-  <p class="small" style="margin:0">Points save as you type and add to each player's total.${sel.some(d=>!counts(d))?" "+sel.filter(d=>!counts(d)).join(", ")+" is not added to the total.":""} A green dot means that domain already has points on this date. Tap the date to change it.</p>`;
+  <p class="small" style="margin:0">Points save as you type and add to each player's total.${sel.some(d=>!counts(d))?" "+sel.filter(d=>!counts(d)).join(", ")+" is not added to the total.":""} A green dot means that domain already has points on this date. Tap the date to change it.</p>`,"points")}`;
 }
 
 function setupView(){
@@ -166,25 +166,24 @@ function setupView(){
 function actsPanel(){
   const d=S.setDom,isSp=d==="Special",tot=isSp?null:outOf(d),list=CFG.acts[d]||[];
   return `
-  ${chips("Domain","setDom",CFG.domains,d)}
+  ${cols(`${chips("Domain","setDom",CFG.domains,d)}
   ${isSp?`<div class="card pad"><h3>Special</h3><p class="small" style="margin:6px 0 0">Special challenges are named on the day. Select Special on Mark Points, type what the challenge was, and add more if there were several.</p></div>`:`
   <div class="card" style="padding:6px 0;border-radius:24px">
     <div class="rowx" style="padding:12px 16px"><h3 class="grow">${esc(d)}</h3><span class="small">${tot==null?"No limit":"Total /"+tot}</span></div>
     <div class="list">${list.map(a=>`<div class="rowx"><span class="grow ell" style="color:var(--text);font-weight:600">${esc(a.name)}</span><span class="or num" style="font-weight:800">${a.max==null?"–":"/"+a.max}</span><button class="x" data-delact="${esc(a.id)}" aria-label="Remove ${esc(a.name)}">✕</button></div>`).join("")||`<p class="small" style="padding:0 16px">No activities yet.</p>`}</div>
-  </div>
-  <div class="card pad stack">
+  </div>`}`,`${isSp?"":`<div class="card pad stack">
     <h3>New activity in ${esc(d)}</h3>
     <div class="rowx"><input type="text" id="newact" placeholder="Activity name" value="${esc(S.newAct)}" style="flex:2"><input type="text" inputmode="numeric" id="newmax" placeholder="Out of" value="${esc(S.newMax)}" style="flex:1"></div>
     <button class="gbtn wide" data-act="addact">Add activity</button>
   </div>`}
   <div class="card toggle"><span>Add ${esc(d)} to the overall total</span><button class="sw" data-act="counts" aria-pressed="${counts(d)}">${counts(d)?"On":"Off"}</button></div>
-  <div class="card toggle"><input type="text" id="newdom" placeholder="New domain, e.g. Passing" value="${esc(S.newDom)}" style="background:transparent;box-shadow:none;padding:6px 0"><button class="cbtn" data-act="adddom">Add</button></div>`;
+  <div class="card toggle"><input type="text" id="newdom" placeholder="New domain, e.g. Passing" value="${esc(S.newDom)}" style="background:transparent;box-shadow:none;padding:6px 0"><button class="cbtn" data-act="adddom">Add</button></div>`,"setup")}`;
 }
 function playersPanel(){
   const on=p=>p.active!==false&&!p.hidden;const all=[...PLAYERS].sort((a,b)=>on(b)-on(a)||a.name.localeCompare(b.name));
   const st=S.sync;
   return `
-  <div class="card pad stack">
+  ${cols(`<div class="card pad stack">
     <div class="rowx"><span class="back" style="width:42px;height:42px;color:var(--red)">${SYNCI}</span><div class="grow"><h3>From your sports app</h3><span class="small">${SYNCINFO?`Last read ${new Date(SYNCINFO.at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${SYNCINFO.count} players`:"Not synced yet"}</span></div></div>
     <span class="small">The app reads football players straight from the Players tab each time it opens: name, admission number, group, gender and date of birth only. Contacts, medical notes and fees are never read.</span>
     ${st?`<div class="pit banner"><span class="ldot ${st.kind==="err"?"wait":""}"></span><span>${esc(st.msg)}</span></div>`:""}
@@ -197,8 +196,7 @@ function playersPanel(){
     <datalist id="grouplist">${groups().map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
     <button class="cbtn" data-act="addplayer">+ Add player</button>
   </div>
-  <div class="card toggle"><span class="small" style="min-width:0">Connected to your Google Sheet</span><button class="cbtn mini" data-act="disconnect">Change</button></div>
-  <div class="card list" style="padding:4px 0;border-radius:24px">${all.map(p=>`<div class="rowx"><span class="av" style="width:34px;height:34px;font-size:12px">${esc(initials(p.name))}</span><span class="grow"><span class="ell" style="color:var(--text);font-weight:600">${esc(p.name)}</span><span class="small">${esc([p.group,p.ag,p.adm?"#"+p.adm:""].filter(Boolean).join(" · "))}</span></span>${p.active===false?'<span class="small">Inactive</span>':`<button class="sw" data-hide="${esc(p.id)}" aria-pressed="${!p.hidden}" aria-label="Show ${esc(p.name)} in the app">${!p.hidden?"On":"Off"}</button>`}</div>`).join("")||`<div class="empty">${LOADED.players||!CONN?"No players yet.":"Loading…"}</div>`}</div>`;
+  <div class="card toggle"><span class="small" style="min-width:0">Connected to your Google Sheet</span><button class="cbtn mini" data-act="disconnect">Change</button></div>`,`<div class="card list" style="padding:4px 0;border-radius:24px">${all.map(p=>`<div class="rowx"><span class="av" style="width:34px;height:34px;font-size:12px">${esc(initials(p.name))}</span><span class="grow"><span class="ell" style="color:var(--text);font-weight:600">${esc(p.name)}</span><span class="small">${esc([p.group,p.ag,p.adm?"#"+p.adm:""].filter(Boolean).join(" · "))}</span></span>${p.active===false?'<span class="small">Inactive</span>':`<button class="sw" data-hide="${esc(p.id)}" aria-pressed="${!p.hidden}" aria-label="Show ${esc(p.name)} in the app">${!p.hidden?"On":"Off"}</button>`}</div>`).join("")||`<div class="empty">${LOADED.players||!CONN?"No players yet.":"Loading…"}</div>`}</div>`,"setup")}`;
 }
 
 function rankView(){
@@ -207,10 +205,9 @@ function rankView(){
   return `
   ${title("RANKS","Leader","board")}
   ${chips("This","period",PERIODS,S.period,x=>PSHORT[x])}
-  ${list.length?`<div class="podium">${pod(b,"second")}${pod(a,"first")}${pod(c,"third")}</div>
-  <div class="card ranks">${list.slice(3).map(r=>`<button class="row" data-player="${esc(r.p.id)}"><span class="n pit">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.ag,r.p.group].filter(Boolean).join(" · "))}</small></span><span class="s or num">${r.s}</span></button>`).join("")||`<div class="empty">Only three players here.</div>`}</div>`:noPlayers()}
+  ${cols(list.length?`<div class="podium">${pod(b,"second")}${pod(a,"first")}${pod(c,"third")}</div>`:noPlayers(),`${list.length?`<div class="card ranks">${list.slice(3).map(r=>`<button class="row" data-player="${esc(r.p.id)}"><span class="n pit">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.ag,r.p.group].filter(Boolean).join(" · "))}</small></span><span class="s or num">${r.s}</span></button>`).join("")||`<div class="empty">Only three players here.</div>`}</div>`:""}
   <div class="filters" aria-label="Domain">${["Overall",...domainsWithData()].map(x=>`<button data-set="rdomain" data-val="${esc(x)}" aria-pressed="${x===S.rdomain}">${esc(x)}</button>`).join("")}</div>
-  <div class="filters" aria-label="Age group">${["All",...ageGroups()].map(x=>`<button data-set="age" data-val="${esc(x)}" aria-pressed="${x===S.age}">${esc(x==="All"?"All ages":x)}</button>`).join("")}</div>`;
+  <div class="filters" aria-label="Age group">${["All",...ageGroups()].map(x=>`<button data-set="age" data-val="${esc(x)}" aria-pressed="${x===S.age}">${esc(x==="All"?"All ages":x)}</button>`).join("")}</div>`,"rank")}`;
 }
 
 function downloadsView(){
@@ -262,7 +259,7 @@ function reportView(){
   const chg=c.change==null?(c.cur?"New":"–"):(c.change>=0?"+":"")+c.change+"%";
   return `
   <div class="head">${backBtn('data-act="back"')}<button class="gbtn sm" data-pdf="card" data-pid="${esc(p.id)}" ${S.busy?"disabled":""}>${S.busy==="card"?"Making PDF…":"PDF report"}</button></div>
-  <div class="hero grad">
+  ${cols(`<div class="hero grad">
     <span class="big" aria-hidden="true">#${c.oAge||"–"}</span>
     <img src="${cutImg(p)}" alt="">
     <div class="cap">Report card</div>
@@ -279,12 +276,12 @@ function reportView(){
     <div class="lbl" style="font-size:15px">Domains<span class="bar" style="height:20px"></span><small>${esc(S.period.toLowerCase())}</small></div>
     ${c.doms.map(x=>`<div class="dom"><span>${esc(x.d)}</span><div class="tr pit"><i style="width:${Math.round(x.pts/mx*100)}%"></i></div><span class="num">${x.pts}</span></div>`).join("")}
   </div>
-  <div class="pit note"><label for="note" class="or">Coach note</label><textarea id="note" rows="2" placeholder="Write a note for ${esc(firstName(p.name))}'s report">${esc(c.note)}</textarea></div>
+  `,`<div class="pit note"><label for="note" class="or">Coach note</label><textarea id="note" rows="2" placeholder="Write a note for ${esc(firstName(p.name))}'s report">${esc(c.note)}</textarea></div>
   ${saveLine()}
   <div class="card" style="overflow-x:auto;padding:6px 0;border-radius:24px"><table class="t"><thead><tr><th>Ranks</th><th class="r">Points</th><th class="r">This wk</th><th class="r">${esc(p.ag)} / all</th></tr></thead><tbody>${rows}</tbody></table>
     <table class="t"><thead><tr><th>Juggling best</th>${c.jug.map(([n])=>`<th class="r">${esc(n)}</th>`).join("")}</tr></thead><tbody><tr><td>Count</td>${c.jug.map(([,v])=>`<td class="r">${v}</td>`).join("")}</tr></tbody></table></div>
   <div class="card pad" style="border-radius:24px"><div class="lbl" style="font-size:15px;margin-bottom:12px">Trend<span class="bar" style="height:20px"></span><small>last 8 weeks</small></div><div class="trend">${trends}</div></div>
-  <div class="small">Ahead of ${c.ahead}% of players · ${ord(c.oAll)} of ${c.n} overall</div>`;
+  <div class="small">Ahead of ${c.ahead}% of players · ${ord(c.oAll)} of ${c.n} overall</div>`,"report")}`;
 }
 
 // ---------- render ----------
