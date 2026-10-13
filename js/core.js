@@ -3,7 +3,7 @@ const LIB={jspdf:"https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js
 
 const pad2=n=>String(n).padStart(2,"0");
 const iso=d=>d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
-const TODAY=iso(new Date());
+let TODAY=iso(new Date());   // refreshed when the app comes back, so an app left open overnight moves to the new day
 const addDays=(s,n)=>{const d=new Date(s+"T00:00");d.setDate(d.getDate()+n);return iso(d)};
 const monday=s=>{const d=new Date(s+"T00:00");const w=(d.getDay()+6)%7;d.setDate(d.getDate()-w);return iso(d)};
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -50,6 +50,8 @@ const sumRow=r=>Object.values(r||{}).reduce((a,v)=>a+(+v||0),0);
 const counts=d=>!CFG.nototal.includes(d);
 const outOf=dom=>acts(dom).reduce((a,x)=>x.max==null||a==null?null:a+x.max,0);
 const markedOn=date=>{const m=(DAYS[date]||{}).marks||{};return Object.keys(m).filter(d=>Object.values(m[d]||{}).some(r=>Object.keys(r||{}).length))};
+// Mark Points opens on a date showing only what was saved for it: its marked domains, or a clean Daily sheet when nothing is saved yet
+function openPoints(date){S.date=date;S.saved=null;const m=markedOn(date);S.doms=m.length?CFG.domains.filter(d=>m.includes(d)):[CFG.domains[0]||"Daily"]}
 
 // ---------- scoring index: player -> domain -> [[date,sum,row]] ----------
 let IX={v:-1,by:{}};
