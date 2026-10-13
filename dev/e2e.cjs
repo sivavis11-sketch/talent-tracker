@@ -31,6 +31,11 @@ ok(all0.players[0].dob === '2012-01-10', 'date of birth comes back as yyyy-mm-dd
 const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
 ok(/cache: "reload"/.test(swSrc) && /fetch\(req, \{ cache: "no-cache" \}\)/.test(swSrc), 'service worker fetches the app fresh so updates show on the next open');
 
+// Chrome resolves the manifest id against the site's origin, not the manifest's folder: "./" would make the id the whole
+// sivavis11-sketch.github.io site, the same id as the MMS ASEP app there, and Chrome would treat the two as one app.
+const man = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8'));
+ok(new URL(man.id, 'https://sivavis11-sketch.github.io/').pathname === '/talent-tracker/' && new URL(man.scope, 'https://sivavis11-sketch.github.io/talent-tracker/manifest.webmanifest').pathname === '/talent-tracker/', 'app id and scope are Talent Tracker\'s own, separate from other apps on the same site');
+
 // ---- serve the app ----
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer((q, r) => {
