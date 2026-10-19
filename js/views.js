@@ -1,11 +1,11 @@
-// ================= screens, laid out like mockup 5 (dark neumorphic) =================
+// ================= screens: black cards, lime accent, glowing ring gauges and player photos (Siva's reference UI) =================
 const S={tab:"home",date:TODAY,doms:["Daily"],grp:(()=>{try{return localStorage.getItem("tt-grp")||""}catch(_){return ""}})(),setDom:"Daily",setMode:"acts",newAct:"",newMax:"",newDom:"",
   hdom:"Daily",htop:"This week",rdomain:"Overall",age:"All",period:"All time",dlPeriod:"This month",player:null,dlp:"",notes:true,np:{name:"",group:"",dob:""},sync:null,busy:""};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-// big "points saved" sign after Save day: a gradient tick on success, an orange clock when kept offline, red on failure
-const TICKI='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
-const WAITI='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>';
+// big "points saved" sign after Save day: a lime tick on success, a clock when kept offline, red on failure
+const TICKI='<svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+const WAITI='<svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>';
 function done(kind,head,sub){const d=$("#done");d.className="done "+kind;
   d.innerHTML=`<div class="card"><span class="mark">${kind==="ok"?TICKI:kind==="wait"?WAITI:"!"}</span><b>${esc(head)}</b><span>${esc(sub)}</span></div>`;
   d.hidden=false;clearTimeout(done.h);done.h=setTimeout(()=>d.hidden=true,kind==="ok"?2600:4200)}
@@ -24,11 +24,11 @@ const cutImg=p=>`img/p-${cutFor(p)}.webp`;
 const TABS=[["home","Home"],["points","Mark points"],["setup","Challenges"],["rank","Leaderboard"],["downloads","Downloads"]];
 const navBtns=()=>TABS.map(([t,l])=>`<button data-tab="${t}" aria-label="${l}" title="${l}" aria-current="${t===S.tab&&S.player==null?"page":"false"}">${NAVI[t]}</button>`).join("");
 const when=(date,sm,input)=>{const d=new Date(date+"T00:00");
-  return `<${input?"label":"div"} class="when${sm?" sm":""}"><div class="wd">${d.toLocaleDateString("en-IN",{weekday:"long"})}</div><div class="dt"><span class="rd">${d.getDate()}</span> <span class="mo">${d.toLocaleDateString("en-IN",{month:"short"}).toUpperCase()}${sm?"":"’"+String(d.getFullYear()).slice(2)}</span></div>${input||""}</${input?"label":"div"}>`};
-const title=(ghost,a,b,side="")=>`<div class="title"><span class="ghost" aria-hidden="true">${ghost}</span><h1><span class="or">${a}</span>${b}</h1>${side}</div>`;
+  return `<${input?"label":"div"} class="when"><span class="wd">${d.toLocaleDateString("en-IN",{weekday:"short"})}</span><span class="dt">${d.getDate()} ${d.toLocaleDateString("en-IN",{month:"short"})}</span>${input?CALI:""}${input||""}</${input?"label":"div"}>`};
+const title=(a,b,side="")=>`<div class="title"><h1>${a}<span class="lm">${b}</span></h1>${side}</div>`;
 const backBtn=attr=>`<button class="back" ${attr} aria-label="Back">${BACKI}</button>`;
-const chips=(label,key,opts,cur,name=x=>x,cls="")=>`<div class="chips ${cls}">${label?`<span class="lb">${label}</span><span class="bar"></span>`:""}${opts.map(o=>`<button data-set="${key}" data-val="${esc(o)}" aria-pressed="${o===cur}">${esc(name(o))}</button>`).join("")}</div>`;
-const stat=(v,k,cls,tag="div",attr="")=>`<${tag} class="card stat" ${attr}><span class="ghost" aria-hidden="true">${esc(v)}</span><div class="v ${cls} num">${esc(v)}</div><div class="k">${k}</div></${tag}>`;
+const chips=(label,key,opts,cur,name=x=>x,cls="")=>`<div class="chips ${cls}">${label?`<span class="lb">${label}</span>`:""}${opts.map(o=>`<button data-set="${key}" data-val="${esc(o)}" aria-pressed="${o===cur}">${esc(name(o))}</button>`).join("")}</div>`;
+const stat=(v,k,cls="")=>`<div class="card stat ${cls}"><div class="v num">${esc(v)}</div><div class="k">${k}</div></div>`;
 const noPlayers=()=>`<div class="card pad stack"><div class="rowx"><span class="ldot wait"></span><h3>Add your players</h3></div><span class="small">${LOADED.players||!CONN?"Bring in your football players from your sports app sheet, or add them by hand.":"Loading your players…"}</span>${LOADED.players||!CONN?`<button class="gbtn" data-go="setup" data-mode="players">Players</button>`:""}</div>`;
 // two columns on a computer; on a phone the wrappers vanish and everything stacks in this order
 const cols=(a,b,cls="")=>`<div class="cols ${cls}"><div class="col">${a}</div><div class="col">${b}</div></div>`;
@@ -54,8 +54,11 @@ function groupWeek(g){
   const done=ps.filter(p=>Object.values(by[p.id]||{}).some(rows=>rows.some(([dt])=>inR(dt,wk)))).length;
   return ps.length?Math.round(done/ps.length*100):0;
 }
-const ring=(pct,size,stroke,id,c1,c2,label)=>{const r=(size-stroke)/2-2,C=2*Math.PI*r,on=C*pct/100;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(label)}"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#242424" stroke-width="${stroke}"/>${pct?`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#${id})" stroke-width="${stroke}" stroke-dasharray="${on.toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/>`:""}</svg>`};
+// glowing lime ring with a dial of ticks around it, like the reference's charging gauge; the number sits on top in HTML
+const gauge=(pct,size,label)=>{const c=size/2,r=c-size*.17,sw=size*.075,C=2*Math.PI*r,on=C*Math.max(0,Math.min(pct,100))/100;
+  const ticks=Array.from({length:60},(_,i)=>{const a=i/60*2*Math.PI,r1=c-2,r2=c-size*.075;return `<line x1="${(c+r1*Math.sin(a)).toFixed(1)}" y1="${(c-r1*Math.cos(a)).toFixed(1)}" x2="${(c+r2*Math.sin(a)).toFixed(1)}" y2="${(c-r2*Math.cos(a)).toFixed(1)}"/>`}).join("");
+  return `<svg class="gauge" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(label)}"><g class="ticks">${ticks}</g><circle cx="${c}" cy="${c}" r="${r}" class="track" stroke-width="${sw}"/>${pct>0?`<circle cx="${c}" cy="${c}" r="${r}" class="arc" stroke-width="${sw}" stroke-dasharray="${on.toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${c} ${c})"/>`:""}</svg>`};
+const dial=(pct,size,big,small,label)=>`<figure class="dial" style="width:${size}px;height:${size}px">${gauge(pct,size,label)}<figcaption><b class="num" style="font-size:${Math.round(size*.19)}px">${big}</b><span>${small}</span></figcaption></figure>`;
 
 const standalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -70,7 +73,7 @@ function installRow(){
 function connectView(){
   if(!S.c)S.c={api:CONN?CONN.api:"",key:CONN?CONN.key:""};
   return `
-  ${title("HELLO","Talent"," Tracker",`<img class="ball" src="${BALL_IMG}" alt="">`)}
+  ${title("Talent ","Tracker",`<img class="ball" src="${BALL_IMG}" alt="">`)}
   <div class="card pad stack">
     <div class="rowx"><span class="ldot wait"></span><h3>Connect your Google Sheet</h3></div>
     <span class="small">Paste the Web app URL and key from your Talent Tracker Apps Script. The README in your talent-tracker repo shows where to find them.</span>
@@ -83,52 +86,42 @@ function connectView(){
 }
 
 function homeView(){
-  const st=todayStats(),n=active().length;
+  const st=todayStats(),n=active().length,pct=n?Math.round(st.touched/n*100):0,wk=range("This week");
   if(!CFG.domains.includes(S.hdom))S.hdom=CFG.domains[0];
   const d=S.hdom,w=domainWeek(d),all=CFG.acts[d]||[],as=(all.filter(a=>a.id in w.best).length?all.filter(a=>a.id in w.best):all).slice(0,2);
   const box=(t,v,suf)=>`<div><div class="t">${esc(t)}</div><div class="b num">${v} <span>${suf}</span></div></div>`;
   const pair=as.length>=2?as.map(a=>box(a.name,w.best[a.id]||0,"best")).join(""):box(as[0]?as[0].name:"Points",as[0]?w.best[as[0].id]||0:0,"best")+box("This week",w.sum,"pts");
-  const gs=groups(),g1=gs[0],g2=gs[1],p1=g1?groupWeek(g1):0,p2=g2?groupWeek(g2):0;
-  const grp=S.grp&&S.grp!=="All"?S.grp:gs[0]||"All",dom0=CFG.domains.find(x=>S.doms.includes(x))||"Daily";
-  const tops=rankList("Overall","All",range(S.htop)).filter(r=>r.s>0).slice(0,2);
-  const pc=(r,i)=>r?`<button class="pc${i?" second":""}" data-player="${esc(r.p.id)}" aria-label="${esc(r.p.name)}, ${ord(r.r)}, ${r.s} points">${i?"":'<span class="side"></span>'}<img src="${cutImg(r.p)}" alt=""><span class="r">#${r.r} · ${r.s}${i?"":" pts"}</span><span class="nm">${esc(firstName(r.p.name))}</span></button>`
-    :`<div class="pc none${i?" second":""}">${i?"":"Top players appear once you save points."}</div>`;
+  const gs=groups().slice(0,3),weekPts=active().reduce((a,p)=>a+overall(p.id,wk),0);
+  const tops=rankList("Overall","All",range(S.htop)).filter(r=>r.s>0).slice(0,3),star=tops[0]?tops[0].p:active()[0];
+  const trow=r=>`<button class="card trow" data-player="${esc(r.p.id)}" aria-label="${esc(r.p.name)}, ${ord(r.r)}, ${r.s} points"><img src="${cutImg(r.p)}" alt=""><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.group,r.p.ag].filter(Boolean).join(" · "))}</small></span><span class="rk">#${r.r}</span><b class="num">${r.s}</b></button>`;
   return `
-  <div class="head">
-    <div class="me"><span class="av" aria-hidden="true">S</span><div class="hey"><div>Hey,</div><div class="or">Siva</div></div></div>
-    ${when(TODAY)}
+  <div class="hello">
+    <div class="me"><span class="hi">Hello 👋 · ${esc(fmtDate(TODAY))}</span><h1>Coach Siva</h1></div>
+    <button class="rbtn" data-tab="setup" aria-label="Challenges and players">${GRIDI}</button>
   </div>
   ${n?"":noPlayers()}
-  ${cols(`<div class="tiles">
-    ${stat(st.touched+"/"+n,"Marked today"+REFRESHI,"or")}
-    <button class="card stat" data-go="points" aria-label="Mark points for ${esc(grp)}"><span class="ghost" aria-hidden="true">${esc(shortGroup(grp))}</span><div class="v rd">${esc(shortGroup(grp))}</div>
-      <div class="go"><span class="n pit">${S.doms.length}</span><b>${esc(dom0)}</b>${PLAYI.replace("<svg",'<svg width="18" height="18"')}</div></button>
+  ${cols(`<div class="bento">
+    <div class="card frame"><div class="lime pct"><b class="num">${pct}<small>%</small></b><span>Marked today</span><em class="num">${st.touched} of ${n}</em></div></div>
+    <div class="card mini"><span class="k">Players</span><b class="num">${n}</b><span class="s">${gs.length?gs.map(shortGroup).join(" · "):"active"}</span><i class="ic">${USERSI}</i></div>
+    <div class="card mini"><span class="k">This week</span><b class="num">${weekPts} <small>pts</small></b><span class="s">all domains</span><i class="ic">${NAVI.rank}</i></div>
   </div>
-  ${chips("Domains","hdom",CFG.domains,d)}
-  <div class="focus">
-    <div class="rail"><span class="n on">1</span><span class="p on"></span></div>
-    <div class="card fcard">${pair}
-      <div class="m"><span>Top<br>player</span><span class="rd">${w.top?esc(firstName(w.top.name)):"–"}</span></div>
-      <div class="m"><span>Avg<br>score</span><span class="rd">${w.avg||"–"}</span></div>
-    </div>
-    <div class="rail"><span class="n card">2</span><span class="p card"></span></div>
+  <div class="duo">
+    <button class="card act" data-tab="rank"><i class="ic">${TROPHYI}</i><span>Leaderboard</span></button>
+    <button class="key" data-go="points" aria-label="Mark points">${NAVI.points}</button>
+    <button class="card act" data-tab="downloads"><i class="ic">${NAVI.downloads}</i><span>Downloads</span></button>
   </div>
-  <div class="week">
-    <div class="lbl2">Week<br>Progress<i></i></div>
-    <span class="ghost" aria-hidden="true">${gs.slice(0,3).map(shortGroup).join(" ")||"1 2 3"}</span>
-    <div class="rings">
-      ${g1?`<figure>${ring(p1,110,26,"rg1","#F0582B","#F9A23B",`${g1} marked ${p1}% this week`)}<figcaption>${esc(shortGroup(g1))} · ${p1}%</figcaption></figure>`:""}
-      ${g2?`<figure>${ring(p2,76,18,"rg2","#EF3E36","#8E2D74",`${g2} marked ${p2}% this week`)}<figcaption>${esc(shortGroup(g2))} · ${p2}%</figcaption></figure>`:""}
-      ${g1?"":`<span class="small">Week progress shows once your players have groups.</span>`}
-    </div>
+  ${chips("","hdom",CFG.domains,d)}
+  <div class="card fcard">${pair}
+    <div class="m"><span>Top player</span><b class="ell">${w.top?esc(firstName(w.top.name)):"–"}</b></div>
+    <div class="m"><span>Avg score</span><b>${w.avg||"–"}</b></div>
   </div>
-  ${installRow()}`,`<div class="bottom">
-    <nav class="nav vnav" aria-label="Sections">${navBtns()}</nav>
-    <div class="tops">
-      ${chips("Top","htop",["This week","This month"],S.htop,x=>PSHORT[x],"sm")}
-      <div class="topcards">${pc(tops[0],0)}${pc(tops[1],1)}</div>
-    </div>
-  </div>`,"home")}`;
+  ${installRow()}`,`<div class="card glow">
+    ${star?`<img src="${cutImg(star)}" alt="">`:""}
+    <h2>Week progress</h2>
+    <div class="rings">${gs.map((g,i)=>{const v=groupWeek(g);return dial(v,i?92:150,v+"%",esc(shortGroup(g)),`${g} marked ${v}% this week`)}).join("")||`<span class="small">Week progress shows once your players have groups.</span>`}</div>
+  </div>
+  ${chips("Top","htop",["This week","This month"],S.htop,x=>PSHORT[x],"sm")}
+  <div class="tops">${tops.map(trow).join("")||`<div class="card empty">Top players appear once you save points.</div>`}</div>`,"home")}`;
 }
 
 function pointsView(){
@@ -148,7 +141,7 @@ function pointsView(){
     </table></div>`;
   return `
   <div class="head">${backBtn('data-tab="home"')}${when(S.date,true,`<input type="date" id="date" value="${S.date}" max="${TODAY}" aria-label="Change date">`)}</div>
-  ${title("POINTS","Mark"," Points")}
+  ${title("Mark ","Points")}
   ${cols(`${groups().length?chips("Group","grp",[...groups(),"All"],S.grp,x=>x==="All"?"All groups":x):`<span class="small">Groups appear here after you sync or add players.</span>`}
   <div class="dgrid">${CFG.domains.map(d=>`<button data-dom="${esc(d)}" aria-pressed="${sel.includes(d)}">${esc(d)}${marked.includes(d)?'<span class="dot" aria-label="has points on this date"></span>':""}</button>`).join("")}</div>
   ${sel.includes("Special")?`<div class="card pad stack"><h3>Special challenges</h3>
@@ -163,7 +156,7 @@ function setupView(){
   const mode=S.setMode;
   return `
   <div class="head">${backBtn('data-tab="home"')}${when(TODAY,true)}</div>
-  ${title("SETUP","Chal","lenges")}
+  ${title("Chal","lenges")}
   ${chips("Edit","setMode",["acts","players"],mode,x=>x==="acts"?"Activities":"Players")}
   ${mode==="players"?playersPanel():actsPanel()}
   ${saveLine()}`;
@@ -189,7 +182,7 @@ function playersPanel(){
   const st=S.sync;
   return `
   ${cols(`<div class="card pad stack">
-    <div class="rowx"><span class="back" style="width:42px;height:42px;color:var(--red)">${SYNCI}</span><div class="grow"><h3>From your sports app</h3><span class="small">${SYNCINFO?`Last read ${new Date(SYNCINFO.at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${SYNCINFO.count} players`:"Not synced yet"}</span></div></div>
+    <div class="rowx"><span class="back" style="width:42px;height:42px;color:var(--lime)">${SYNCI}</span><div class="grow"><h3>From your sports app</h3><span class="small">${SYNCINFO?`Last read ${new Date(SYNCINFO.at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${SYNCINFO.count} players`:"Not synced yet"}</span></div></div>
     <span class="small">The app reads football players straight from the Players tab each time it opens: name, admission number, group, gender and date of birth only. Contacts, medical notes and fees are never read.</span>
     ${st?`<div class="pit banner"><span class="ldot ${st.kind==="err"?"wait":""}"></span><span>${esc(st.msg)}</span></div>`:""}
     <button class="gbtn wide" data-act="sync" ${S.busy==="sync"?"disabled":""}>${S.busy==="sync"?"Reading…":"Refresh players"}</button>
@@ -206,29 +199,29 @@ function playersPanel(){
 
 function rankView(){
   const rg=range(S.period),list=rankList(S.rdomain,S.age,rg);const [a,b,c]=list;
-  const pod=(r,cls)=>r?`<button class="pod ${cls}" data-player="${esc(r.p.id)}" aria-label="${ord(r.r)}: ${esc(r.p.name)}, ${r.s} points"><span class="ghost" aria-hidden="true">${r.r}</span><img src="${cutImg(r.p)}" alt=""><span class="foot"><b>${esc(firstName(r.p.name))}</b><span class="${cls==="first"?"":"or"}">${r.s}</span></span></button>`:`<span></span>`;
+  const pod=(r,cls)=>r?`<button class="pod ${cls}" data-player="${esc(r.p.id)}" aria-label="${ord(r.r)}: ${esc(r.p.name)}, ${r.s} points"><span class="no">${r.r}</span><img src="${cutImg(r.p)}" alt=""><span class="foot"><b>${esc(firstName(r.p.name))}</b><span class="num">${r.s}</span></span></button>`:`<span></span>`;
   return `
-  ${title("RANKS","Leader","board")}
+  ${title("Leader","board")}
   ${chips("This","period",PERIODS,S.period,x=>PSHORT[x])}
-  ${cols(list.length?`<div class="podium">${pod(b,"second")}${pod(a,"first")}${pod(c,"third")}</div>`:noPlayers(),`${list.length?`<div class="card ranks">${list.slice(3).map(r=>`<button class="row" data-player="${esc(r.p.id)}"><span class="n pit">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.ag,r.p.group].filter(Boolean).join(" · "))}</small></span><span class="s or num">${r.s}</span></button>`).join("")||`<div class="empty">Only three players here.</div>`}</div>`:""}
+  ${cols(list.length?`<div class="podium">${pod(b,"second")}${pod(a,"first")}${pod(c,"third")}</div>`:noPlayers(),`${list.length?`<div class="card ranks">${list.slice(3).map(r=>`<button class="row" data-player="${esc(r.p.id)}"><span class="n">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.ag,r.p.group].filter(Boolean).join(" · "))}</small></span><span class="s or num">${r.s}</span></button>`).join("")||`<div class="empty">Only three players here.</div>`}</div>`:""}
   <div class="filters" aria-label="Domain">${["Overall",...domainsWithData()].map(x=>`<button data-set="rdomain" data-val="${esc(x)}" aria-pressed="${x===S.rdomain}">${esc(x)}</button>`).join("")}</div>
   <div class="filters" aria-label="Age group">${["All",...ageGroups()].map(x=>`<button data-set="age" data-val="${esc(x)}" aria-pressed="${x===S.age}">${esc(x==="All"?"All ages":x)}</button>`).join("")}</div>`,"rank")}`;
 }
 
 function downloadsView(){
   const ps=active();if(!S.dlp&&ps[0])S.dlp=ps[0].id;const dp=pById(S.dlp);
-  const tile=(n,t,kind)=>`<button class="tile card" data-pdf="${kind}" aria-label="Download ${t.replace("<br>"," ")} PDF" ${S.busy?"disabled":""}><span class="ghost" aria-hidden="true">${n}</span><span class="t">${t}</span><span class="dl pit">${S.busy===kind?"…":DLI("#EF3E36")}</span></button>`;
+  const tile=(n,t,kind)=>`<button class="tile card" data-pdf="${kind}" aria-label="Download ${t.replace("<br>"," ")} PDF" ${S.busy?"disabled":""}><span class="no">${n}</span><span class="t">${t}</span><span class="dl">${S.busy===kind?"…":DLI("#111")}</span></button>`;
   return `
-  ${title("PDFS","Down","loads",`<img class="ball" src="${BALL_IMG}" alt="">`)}
+  ${title("Down","loads",`<img class="ball" src="${BALL_IMG}" alt="">`)}
   ${chips("Period","dlPeriod",PERIODS,S.dlPeriod,x=>PSHORT[x])}
   <div class="dtiles">
-    <button class="tile wide grad" data-pdf="card" aria-label="Download report card PDF${dp?" for "+esc(dp.name):""}" ${ps.length&&!S.busy?"":"disabled"}>
+    <button class="tile wide lime" data-pdf="card" aria-label="Download report card PDF${dp?" for "+esc(dp.name):""}" ${ps.length&&!S.busy?"":"disabled"}>
       ${dp?`<img src="${cutImg(dp)}" alt="">`:""}
       <span class="sub">One PDF per player</span>
       <span class="big">PLAYER<br>REPORT CARDS</span>
-      <span class="dl" style="background:rgba(255,255,255,.9)">${S.busy==="card"?"…":DLI("#A3202A")}</span>
+      <span class="dl">${S.busy==="card"?"…":DLI("#C8F23D")}</span>
     </button>
-    <div class="card pad stack" style="grid-column:span 2;border-radius:22px">
+    <div class="card pad stack pick">
       <select id="dlplayer" aria-label="Player for the report card">${ps.map(p=>`<option value="${esc(p.id)}" ${S.dlp===p.id?"selected":""}>${esc(p.name)} · ${esc(p.ag)}</option>`).join("")||"<option>No players yet</option>"}</select>
       <button class="cbtn" data-act="preview" ${ps.length?"":"disabled"}>Preview report card</button>
     </div>
@@ -244,7 +237,7 @@ function spark(vals){
   const w=160,h=56,pad=6,mx=Math.max(...vals,1),mn=Math.min(...vals,0),span=mx-mn||1;
   const pts=vals.map((v,i)=>[pad+i*(w-2*pad)/(vals.length-1),h-pad-(v-mn)/span*(h-2*pad)]);
   const d=pts.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" ");const l=pts.at(-1);
-  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Weekly points ${vals.join(", ")}"><path d="${d} L${l[0].toFixed(1)} ${h-pad} L${pad} ${h-pad} Z" fill="rgba(239,62,54,.16)"/><path d="${d}" fill="none" stroke="#F0582B" stroke-width="2.2" stroke-linejoin="round"/><circle cx="${l[0].toFixed(1)}" cy="${l[1].toFixed(1)}" r="3.5" fill="#F9A23B"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Weekly points ${vals.join(", ")}"><path d="${d} L${l[0].toFixed(1)} ${h-pad} L${pad} ${h-pad} Z" fill="rgba(200,242,61,.14)"/><path d="${d}" fill="none" stroke="#C8F23D" stroke-width="2.2" stroke-linejoin="round"/><circle cx="${l[0].toFixed(1)}" cy="${l[1].toFixed(1)}" r="3.5" fill="#C8F23D"/></svg>`;
 }
 function monthTotal(pid,offset){const d=new Date(TODAY+"T00:00");d.setDate(1);d.setMonth(d.getMonth()+offset);const a=iso(d);d.setMonth(d.getMonth()+1);d.setDate(0);return overall(pid,[a,iso(d)])}
 function cardData(pid,period){
@@ -264,28 +257,28 @@ function reportView(){
   const chg=c.change==null?(c.cur?"New":"–"):(c.change>=0?"+":"")+c.change+"%";
   return `
   <div class="head">${backBtn('data-act="back"')}<button class="gbtn sm" data-pdf="card" data-pid="${esc(p.id)}" ${S.busy?"disabled":""}>${S.busy==="card"?"Making PDF…":"PDF report"}</button></div>
-  ${cols(`<div class="hero grad">
-    <span class="big" aria-hidden="true">#${c.oAge||"–"}</span>
+  ${cols(`<div class="hero">
     <img src="${cutImg(p)}" alt="">
+    ${dial(c.ahead,118,c.ahead+"%","ahead",`Ahead of ${c.ahead}% of players`)}
     <div class="cap">Report card</div>
     <div class="name">${first?esc(first)+"<br>":""}${esc(sur)}</div>
     <div class="tags"><span>${c.oAge?"#"+c.oAge+" in ":""}${esc(p.ag)}</span>${p.group?`<span>${esc(p.group)}</span>`:""}</div>
   </div>
   <div class="tiles three">
-    ${stat(String(c.total),"Total pts","or")}
-    ${stat(String(c.days),"Days","rd")}
-    ${stat(chg,"vs last month","or")}
+    ${stat(String(c.total),"Total pts","lime")}
+    ${stat(String(c.days),"Days")}
+    ${stat(chg,"vs last month")}
   </div>
   ${chips("Period","period",PERIODS,S.period,x=>PSHORT[x],"sm")}
   <div class="card doms">
-    <div class="lbl" style="font-size:15px">Domains<span class="bar" style="height:20px"></span><small>${esc(S.period.toLowerCase())}</small></div>
+    <div class="lbl">Domains<small>${esc(S.period.toLowerCase())}</small></div>
     ${c.doms.map(x=>`<div class="dom"><span>${esc(x.d)}</span><div class="tr pit"><i style="width:${Math.round(x.pts/mx*100)}%"></i></div><span class="num">${x.pts}</span></div>`).join("")}
   </div>
   `,`<div class="pit note"><label for="note" class="or">Coach note</label><textarea id="note" rows="2" placeholder="Write a note for ${esc(firstName(p.name))}'s report">${esc(c.note)}</textarea></div>
   ${saveLine()}
   <div class="card" style="overflow-x:auto;padding:6px 0;border-radius:24px"><table class="t"><thead><tr><th>Ranks</th><th class="r">Points</th><th class="r">This wk</th><th class="r">${esc(p.ag)} / all</th></tr></thead><tbody>${rows}</tbody></table>
     <table class="t"><thead><tr><th>Juggling best</th>${c.jug.map(([n])=>`<th class="r">${esc(n)}</th>`).join("")}</tr></thead><tbody><tr><td>Count</td>${c.jug.map(([,v])=>`<td class="r">${v}</td>`).join("")}</tr></tbody></table></div>
-  <div class="card pad" style="border-radius:24px"><div class="lbl" style="font-size:15px;margin-bottom:12px">Trend<span class="bar" style="height:20px"></span><small>last 8 weeks</small></div><div class="trend">${trends}</div></div>
+  <div class="card pad" style="border-radius:24px"><div class="lbl" style="margin-bottom:12px">Trend<small>last 8 weeks</small></div><div class="trend">${trends}</div></div>
   <div class="small">Ahead of ${c.ahead}% of players · ${ord(c.oAll)} of ${c.n} overall</div>`,"report")}`;
 }
 

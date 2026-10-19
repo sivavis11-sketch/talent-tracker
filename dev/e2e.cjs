@@ -134,9 +134,10 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   const after = await pg.evaluate(() => ({ n: active().length, hidden: PLAYERS.find(p => p.id === 'a-T100').hidden, manual: PLAYERS.some(p => p.name === 'Test Manual'), days: Object.keys(DAYS).length }));
   ok(after.hidden === true && after.manual && after.n === 7 && after.days >= 1, 'after reload: hidden player, manual player and points all kept ' + JSON.stringify(after));
   await pg.click('nav [data-tab=home]'); await wait(300); await shot('8-home-week');
-  ok(await pg.isVisible('.vnav [data-tab=rank]') && !(await pg.isVisible('nav.tabs')), 'Home shows the side menu instead of the bottom bar');
-  ok(await pg.isVisible('.pc[data-player]'), 'Home shows this week\'s top players');
-  await pg.click('.pc[data-player]'); await wait(300);
+  ok(await pg.isVisible('nav.tabs [data-tab=rank]') && await pg.isVisible('.hello .rbtn') && await pg.isVisible('.duo .key[data-go=points]'), 'Home shows the bottom bar, the round menu button and the Mark points key');
+  ok(await pg.isVisible('.bento .pct') && await pg.isVisible('.glow .dial svg.gauge') && await pg.isVisible('.glow > img'), 'Home shows the lime marked-today tile and the player hero with glowing gauges');
+  ok(await pg.isVisible('.trow[data-player]'), 'Home shows this week\'s top players');
+  await pg.click('.trow[data-player]'); await wait(300);
   ok(await pg.isVisible('.hero .name') && await pg.isVisible('nav.tabs [data-tab=home]'), 'a top player card opens that player\'s report card');
   // computer screen: the nav stands on the left and every screen uses two columns, with nothing spilling sideways
   await pg.setViewportSize({ width: 1366, height: 860 });
