@@ -2,7 +2,7 @@
 // (so a new version shows on the next open) and kept in the cache only for when there
 // is no signal. Fonts and PDF libraries never change, so they come from the cache.
 // Calls to the Google Apps Script are never cached.
-const VERSION = "tt-v8";
+const VERSION = "tt-v9";
 const SHELL = ["./", "index.html", "app.css", "manifest.webmanifest",
   "js/icons.js", "js/core.js", "js/views.js", "js/store.js", "js/actions.js",
   "img/p-stand.webp", "img/p-dribble.webp", "img/p-juggle.webp", "img/p-celebrate.webp", "img/p-header.webp", "img/p-kick.webp",

@@ -33,36 +33,34 @@ async function pngData(src){
   try{const b=await (await fetch(src)).blob();cache[src]=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r(null);f.readAsDataURL(b)})}catch(_){cache[src]=null}
   return cache[src];
 }
-const CHAR=[43,43,43],GHOST=[58,58,58],RED=[239,62,54],ORANGE=[240,88,43],PURPLE=[142,45,116],INK=[30,30,30],MUTE=[120,120,120],TINT=[246,243,242];
-const alpha=(doc,o)=>doc.setGState(new doc.GState({opacity:o,"stroke-opacity":o}));
-// dark header for the list reports: ghost word, orange eyebrow, red→purple strip
+// black and lime as in the app; on white paper lines and headings use a deeper green so they stay readable
+const CHAR=[17,17,17],LIME=[200,242,61],GREEN=[96,135,0],INK=[30,30,30],MUTE=[120,120,120],TINT=[244,246,238];
+// black header for the list reports: lime eyebrow and a lime strip along the bottom
 function pdfHeader(doc,eyebrow,title,sub){
   const W=doc.internal.pageSize.getWidth(),H=46;
   doc.setFillColor(...CHAR);doc.rect(0,0,W,H,"F");
-  doc.setFont("helvetica","bold");doc.setFontSize(78);doc.setTextColor(...GHOST);doc.text(title.split(" ")[0].toUpperCase(),W-8,H-3,{align:"right"});
-  [RED,[201,58,85],PURPLE].forEach((c,i)=>{doc.setFillColor(...c);doc.rect(i*W/3,H-2.5,W/3+.2,2.5,"F")});
-  doc.setTextColor(249,162,59);doc.setFontSize(8.5);doc.text(eyebrow.toUpperCase(),14,15,{charSpace:1.2});
+  doc.setFillColor(...LIME);doc.rect(0,H-2.5,W,2.5,"F");
+  doc.setFont("helvetica","bold");doc.setTextColor(...LIME);doc.setFontSize(8.5);doc.text(eyebrow.toUpperCase(),14,15,{charSpace:1.2});
   doc.setTextColor(255,255,255);doc.setFontSize(22);doc.text(doc.splitTextToSize(title,130),14,27);
   doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(207,207,207);doc.text(sub,14,H-8);
   return H+10;
 }
-// report card header, as on the app's report card: red→purple card with the player's name and cut-out, then three stat tiles
+// report card header, as on the app's report card: a lime card with the player's name and cut-out, then three black stat tiles
 async function cardHeader(doc,c,PL){
   const W=doc.internal.pageSize.getWidth(),H=112,p=c.p,[first,sur]=splitName(p.name),x0=14,y0=12,cw=W-28,ch=62;
   doc.setFillColor(...CHAR);doc.rect(0,0,W,H,"F");
   doc.saveGraphicsState();doc.roundedRect(x0,y0,cw,ch,7,7,null);doc.clip();doc.discardPath();
-  const g=[[239,62,54],[201,58,85],[142,45,116]];for(let i=0;i<40;i++){const t=i/39,k=t<.55?t/.55:(t-.55)/.45,[a,b]=t<.55?[g[0],g[1]]:[g[1],g[2]];doc.setFillColor(...a.map((v,j)=>Math.round(v+(b[j]-v)*k)));doc.rect(x0,y0+i*ch/40,cw,ch/40+.3,"F")}
-  alpha(doc,.12);doc.setFont("helvetica","bold");doc.setFontSize(110);doc.setTextColor(255,255,255);doc.text("#"+(c.oAge||"-"),x0+cw-4,y0+36,{align:"right"});alpha(doc,1);
+  doc.setFillColor(...LIME);doc.rect(x0,y0,cw,ch,"F");
   const img=await pngData("img/pdf-"+(/^f/i.test(p.gender||"")?"kick":"stand")+".png");
   if(img){const ip=doc.getImageProperties(img),ih=ch+12,iw=ih*ip.width/ip.height;doc.addImage(img,"PNG",x0+cw-iw-8,y0+4,iw,ih)}
   doc.restoreGraphicsState();
-  doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(255,210,122);doc.text("Report card  ·  "+PL,x0+8,y0+10);
-  doc.setFont("helvetica","bolditalic");doc.setTextColor(255,255,255);let fs=30;doc.setFontSize(fs);while(fs>16&&Math.max(doc.getTextWidth(first.toUpperCase()),doc.getTextWidth(sur.toUpperCase()))>cw*.55){fs-=2;doc.setFontSize(fs)}
+  doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(60,72,20);doc.text("Report card  ·  "+PL,x0+8,y0+10);
+  doc.setFont("helvetica","bold");doc.setTextColor(...CHAR);let fs=30;doc.setFontSize(fs);while(fs>16&&Math.max(doc.getTextWidth(first.toUpperCase()),doc.getTextWidth(sur.toUpperCase()))>cw*.55){fs-=2;doc.setFontSize(fs)}
   doc.text([first,sur].filter(Boolean).map(x=>x.toUpperCase()),x0+8,y0+24,{lineHeightFactor:1});
-  doc.setFont("helvetica","bold");doc.setFontSize(8.5);let tx=x0+8;[(c.oAge?"#"+c.oAge+" in ":"")+p.ag,p.group].filter(Boolean).forEach(t=>{const tw=doc.getTextWidth(t)+8;alpha(doc,.25);doc.setFillColor(0,0,0);doc.roundedRect(tx,y0+ch-14,tw,7,3.5,3.5,"F");alpha(doc,1);doc.setTextColor(255,255,255);doc.text(t,tx+4,y0+ch-9.2);tx+=tw+3});
+  doc.setFont("helvetica","bold");doc.setFontSize(8.5);let tx=x0+8;[(c.oAge?"#"+c.oAge+" in ":"")+p.ag,p.group].filter(Boolean).forEach(t=>{const tw=doc.getTextWidth(t)+8;doc.setFillColor(...CHAR);doc.roundedRect(tx,y0+ch-14,tw,7,3.5,3.5,"F");doc.setTextColor(255,255,255);doc.text(t,tx+4,y0+ch-9.2);tx+=tw+3});
   const chg=c.change==null?(c.cur?"New":"-"):(c.change>=0?"+":"")+c.change+"%",bw=(cw-8)/3;
-  [[String(c.total),"Total pts",[249,162,59]],[String(c.days),"Days",[239,62,54]],[chg,"vs last month",[249,162,59]]].forEach(([v,k,col],i)=>{const x=x0+i*(bw+4),y=y0+ch+6;
-    doc.setFillColor(39,39,39);doc.roundedRect(x,y,bw,24,5,5,"F");doc.setFont("helvetica","bold");doc.setFontSize(30);doc.setTextColor(...GHOST);doc.text(v,x+3,y+15);
+  [[String(c.total),"Total pts",LIME],[String(c.days),"Days",[255,255,255]],[chg,"vs last month",[255,255,255]]].forEach(([v,k,col],i)=>{const x=x0+i*(bw+4),y=y0+ch+6;
+    doc.setFillColor(28,28,28);doc.roundedRect(x,y,bw,24,5,5,"F");doc.setFont("helvetica","bold");
     doc.setFontSize(18);doc.setTextColor(...col);doc.text(v,x+5,y+13);doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(140,140,140);doc.text(k,x+5,y+20)});
   return H+10;
 }
@@ -73,7 +71,7 @@ function pdfFooters(doc){
 const tbl=(doc,y,head,body,opt={})=>{doc.autoTable({startY:y,head:[head],body,theme:"plain",margin:{left:14,right:14},
   styles:{font:"helvetica",fontSize:9,textColor:INK,cellPadding:{top:2.2,bottom:2.2,left:3,right:3}},headStyles:{fillColor:CHAR,textColor:255,fontStyle:"bold",fontSize:8.5},
   alternateRowStyles:{fillColor:TINT},...opt});return doc.lastAutoTable.finalY};
-function section(doc,y,t){const H=doc.internal.pageSize.getHeight();if(y>H-40){doc.addPage();y=20}doc.setFont("helvetica","bold");doc.setFontSize(12);doc.setTextColor(...INK);doc.text(t,14,y);doc.setDrawColor(...RED);doc.setLineWidth(.8);doc.line(14,y+2,26,y+2);return y+7}
+function section(doc,y,t){const H=doc.internal.pageSize.getHeight();if(y>H-40){doc.addPage();y=20}doc.setFont("helvetica","bold");doc.setFontSize(12);doc.setTextColor(...INK);doc.text(t,14,y);doc.setDrawColor(...GREEN);doc.setLineWidth(.8);doc.line(14,y+2,26,y+2);return y+7}
 const periodLabel=p=>{const [a,b]=range(p);return p==="All time"?"All time":`${p} · ${fmtDate(a)} – ${fmtDate(b)}`};
 
 async function buildPdf(kind,pid){
@@ -96,8 +94,8 @@ async function buildPdf(kind,pid){
       const x0=14+col*(cw+4);doc.setFillColor(...TINT);doc.roundedRect(x0,y,cw,ch,3,3,"F");doc.setFontSize(8.5);doc.setTextColor(...INK);doc.text(x.d,x0+4,y+6);
       const ch2=x.w.at(-1)-x.w.at(-2);doc.setTextColor(...(ch2>=0?[30,150,60]:[200,60,50]));doc.text((ch2>=0?"+":"")+ch2,x0+cw-4,y+6,{align:"right"});
       const mx=Math.max(...x.w,1),px=i2=>x0+5+i2*(cw-10)/(x.w.length-1),py=v=>y+ch-5-(v/mx)*(ch-15);
-      doc.setDrawColor(...ORANGE);doc.setLineWidth(.7);for(let k=1;k<x.w.length;k++)doc.line(px(k-1),py(x.w[k-1]),px(k),py(x.w[k]));
-      doc.setFillColor(...RED);doc.circle(px(x.w.length-1),py(x.w.at(-1)),1.2,"F")});
+      doc.setDrawColor(...GREEN);doc.setLineWidth(.7);for(let k=1;k<x.w.length;k++)doc.line(px(k-1),py(x.w[k-1]),px(k),py(x.w[k]));
+      doc.setFillColor(...GREEN);doc.circle(px(x.w.length-1),py(x.w.at(-1)),1.2,"F")});
     y+=ch+4;
     if(S.notes&&c.note){y=section(doc,y+8,"Coach note");doc.setFontSize(10);doc.setTextColor(...INK);const lines=doc.splitTextToSize(c.note,W-36);
       doc.setFillColor(...TINT);doc.roundedRect(14,y,W-28,lines.length*5+8,3,3,"F");doc.text(lines,18,y+7)}
@@ -124,7 +122,7 @@ async function buildPdf(kind,pid){
       markedOn(dt).forEach(d=>{const as=d==="Special"?(day.specials||[]):(CFG.acts[d]||[]);const m=day.marks[d]||{};
         const ids=new Set(as.map(a=>a.id));Object.values(m).forEach(r=>Object.keys(r||{}).forEach(k=>{if(!ids.has(k)){ids.add(k);as.push({id:k,name:"(removed)"})}}));
         const rows=active().filter(p=>m[p.id]&&Object.keys(m[p.id]).length).map(p=>[p.name,...as.map(a=>m[p.id][a.id]??""),sumRow(m[p.id])]);
-        doc.setFontSize(9.5);doc.setTextColor(...RED);doc.text(d,14,y+1);
+        doc.setFontSize(9.5);doc.setTextColor(...GREEN);doc.text(d,14,y+1);
         y=tbl(doc,y+3,["Player",...as.map(a=>(a.name||"Special")+(a.max!=null?" /"+a.max:"")),"Total"],rows,{styles:{fontSize:as.length>6?7:8.5},columnStyles:{0:{cellWidth:34}}})+6})});
     file="Day sheets.pdf";
   }
