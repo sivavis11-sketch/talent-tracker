@@ -39,8 +39,14 @@ function ageGroup(dob){
 }
 const active=()=>PLAYERS.filter(p=>p.active!==false&&!p.hidden).sort((a,b)=>a.name.localeCompare(b.name));
 const pById=id=>PLAYERS.find(p=>p.id===id);
-const groups=()=>[...new Set(active().map(p=>p.group).filter(Boolean))].sort();
-const ageGroups=()=>[...new Set(active().map(p=>p.ag))].sort((a,b)=>(parseInt(a.slice(1))||99)-(parseInt(b.slice(1))||99));
+// players are only ever compared inside their own group; players with no group in the sheet share one "No group" group
+const NOGRP="No group";
+const grpOf=p=>p.group||NOGRP;
+const groups=()=>[...new Set(active().map(grpOf))].sort((a,b)=>(a===NOGRP)-(b===NOGRP)||a.localeCompare(b,undefined,{numeric:true}));
+const inGrp=g=>active().filter(p=>grpOf(p)===g);
+// the group on screen: shared by Home, Mark Points and the Leaderboard, remembered on this device
+// (left alone while the player list is still loading, so the remembered group survives opening the app)
+function curGrp(){const gs=groups();if(gs.length&&!gs.includes(S.grp))S.grp=gs[0];return S.grp}
 
 // ---------- day sheets ----------
 const dayOf=date=>(DAYS[date]=DAYS[date]||{date,marks:{},specials:[]});
@@ -71,11 +77,11 @@ const inR=(date,[a,b])=>date>=a&&date<=b;
 const score=(pid,d,rg)=>((index()[pid]||{})[d]||[]).reduce((a,[dt,s])=>inR(dt,rg)?a+s:a,0);
 const overall=(pid,rg)=>Object.keys(index()[pid]||{}).filter(counts).reduce((a,d)=>a+score(pid,d,rg),0);
 const domScore=(pid,d,rg)=>d==="Overall"?overall(pid,rg):score(pid,d,rg);
-function rankList(domain,age,rg){
-  const arr=active().filter(p=>age==="All"||p.ag===age).map(p=>({p,s:domScore(p.id,domain,rg)})).sort((a,b)=>b.s-a.s||a.p.name.localeCompare(b.p.name));
+function rankList(domain,grp,rg){
+  const arr=inGrp(grp).map(p=>({p,s:domScore(p.id,domain,rg)})).sort((a,b)=>b.s-a.s||a.p.name.localeCompare(b.p.name));
   let r=0,prev=null;arr.forEach((x,i)=>{if(x.s!==prev){r=i+1;prev=x.s}x.r=r});return arr;
 }
-const rankOf=(pid,d,age,rg)=>{const x=rankList(d,age,rg).find(r=>r.p.id===pid);return x?x.r:0};
+const rankOf=(pid,d,grp,rg)=>{const x=rankList(d,grp,rg).find(r=>r.p.id===pid);return x?x.r:0};
 function weekly(pid,d,n=8){
   const end=monday(TODAY),keys=Array.from({length:n},(_,i)=>addDays(end,-7*(n-1-i)));
   return keys.map(k=>domScore(pid,d,[k,addDays(k,6)]));

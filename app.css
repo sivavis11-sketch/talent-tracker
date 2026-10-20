@@ -234,6 +234,7 @@ table.t .r{text-align:right}
 /* downloads */
 .dtiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .dtiles .pick{grid-column:span 2}
+.dtiles .tile:last-child{grid-column:span 2}
 .tile{border:0;height:140px;border-radius:26px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;text-align:left;position:relative;overflow:hidden;color:var(--ink);font:inherit;cursor:pointer}
 .tile.wide{grid-column:span 2;height:180px}
 .tile.lime{color:var(--on-lime)}
