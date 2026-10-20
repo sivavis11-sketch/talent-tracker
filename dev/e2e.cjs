@@ -134,8 +134,8 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   const after = await pg.evaluate(() => ({ n: active().length, hidden: PLAYERS.find(p => p.id === 'a-T100').hidden, manual: PLAYERS.some(p => p.name === 'Test Manual'), days: Object.keys(DAYS).length }));
   ok(after.hidden === true && after.manual && after.n === 7 && after.days >= 1, 'after reload: hidden player, manual player and points all kept ' + JSON.stringify(after));
   await pg.click('nav [data-tab=home]'); await wait(300); await shot('8-home-week');
-  ok(await pg.isVisible('nav.tabs [data-tab=rank]') && await pg.isVisible('.hello .rbtn') && await pg.isVisible('.duo .key[data-go=points]'), 'Home shows the bottom bar, the round menu button and the Mark points key');
-  ok(await pg.isVisible('.bento .pct') && await pg.isVisible('.glow .dial svg.gauge') && await pg.isVisible('.glow > img'), 'Home shows the lime marked-today tile and the player hero with glowing gauges');
+  ok(await pg.isVisible('nav.tabs [data-tab=rank]') && await pg.isVisible('.hello .rbtn') && await pg.isVisible('.vhero .go[data-go=points]'), 'Home shows the bottom bar, the round menu button and the Open Mark Points button');
+  ok(await pg.isVisible('.vhero > img') && await pg.isVisible('.pair .mk') && await pg.isVisible('.pair .topc[data-player]'), 'Home shows the poster hero with a player photo, marked today and the group\'s top player');
   ok(await pg.evaluate(() => S.grp) === 'GROUP 2', 'the chosen group is remembered after reopening the app');
   ok(await pg.isVisible('.trow[data-player]'), 'Home shows this week\'s top players');
   await pg.click('.trow[data-player]'); await wait(300);
