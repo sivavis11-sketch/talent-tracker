@@ -1,4 +1,4 @@
-// ================= screens: black cards, lime accent, glowing ring gauges and player photos (Siva's reference UI) =================
+// ================= screens in the Volt poster style: light ground, white and black cards, lime shapes, colour player cut-outs, arrow badges =================
 const S={tab:"home",date:TODAY,doms:["Daily"],grp:(()=>{try{return localStorage.getItem("tt-grp")||""}catch(_){return ""}})(),setDom:"Daily",setMode:"acts",newAct:"",newMax:"",newDom:"",
   hdom:"Daily",htop:"This week",rdomain:"Overall",period:"All time",dlPeriod:"This month",player:null,dlp:"",notes:true,np:{name:"",group:"",dob:""},sync:null,busy:""};
 const $=s=>document.querySelector(s);
@@ -36,23 +36,12 @@ const saveLine=()=>`<div class="saved" id="savestate"></div>`;
 const PERIODS=["This week","This month","Last 3 months","All time"];
 const PSHORT={"This week":"Week","This month":"Month","Last 3 months":"3 months","All time":"All time"};
 
-function todayStats(){
-  const t=(DAYS[TODAY]||{}).marks||{},marked=markedOn(TODAY);
-  const touched=new Set();marked.forEach(d=>Object.entries(t[d]||{}).forEach(([id,r])=>{if(Object.keys(r||{}).length)touched.add(id)}));
-  return {marked,touched:[...touched].filter(pById).length};
-}
 // this week's numbers for one domain: best single-day count per activity, top player, average per player
 function domainWeek(d,g){
   const wk=range("This week"),best={},by=index();let sum=0,np=0;
   inGrp(g).forEach(p=>{let s=0;((by[p.id]||{})[d]||[]).forEach(([dt,v,r])=>{if(!inR(dt,wk))return;s+=v;Object.entries(r).forEach(([k,x])=>{best[k]=Math.max(best[k]||0,+x||0)})});if(s>0){sum+=s;np++}});
   const top=rankList(d,g,wk)[0];
   return {best,top:top&&top.s>0?top.p:null,avg:np?Math.round(sum/np*10)/10:0,sum};
-}
-// share of a group's players with any points this week
-function groupWeek(g){
-  const wk=range("This week"),ps=inGrp(g),by=index();
-  const done=ps.filter(p=>Object.values(by[p.id]||{}).some(rows=>rows.some(([dt])=>inR(dt,wk)))).length;
-  return ps.length?Math.round(done/ps.length*100):0;
 }
 // glowing lime ring with a dial of ticks around it, like the reference's charging gauge; the number sits on top in HTML
 const gauge=(pct,size,label)=>{const c=size/2,r=c-size*.17,sw=size*.075,C=2*Math.PI*r,on=C*Math.max(0,Math.min(pct,100))/100;
@@ -86,40 +75,41 @@ function connectView(){
 }
 
 function homeView(){
-  const st=todayStats(),n=active().length,pct=n?Math.round(st.touched/n*100):0,wk=range("This week");
+  const wk=range("This week");
   if(!CFG.domains.includes(S.hdom))S.hdom=CFG.domains[0];
-  const g=curGrp(),d=S.hdom,w=domainWeek(d,g),all=CFG.acts[d]||[],as=(all.filter(a=>a.id in w.best).length?all.filter(a=>a.id in w.best):all).slice(0,2);
+  const g=curGrp(),ps=inGrp(g),n=ps.length,d=S.hdom,w=domainWeek(d,g),all=CFG.acts[d]||[],as=(all.filter(a=>a.id in w.best).length?all.filter(a=>a.id in w.best):all).slice(0,2);
   const box=(t,v,suf)=>`<div><div class="t">${esc(t)}</div><div class="b num">${v} <span>${suf}</span></div></div>`;
   const pair=as.length>=2?as.map(a=>box(a.name,w.best[a.id]||0,"best")).join(""):box(as[0]?as[0].name:"Points",as[0]?w.best[as[0].id]||0:0,"best")+box("This week",w.sum,"pts");
-  const gs=groups().slice(0,3),weekPts=active().reduce((a,p)=>a+overall(p.id,wk),0);
-  const tops=rankList("Overall",g,range(S.htop)).filter(r=>r.s>0).slice(0,3),star=tops[0]?tops[0].p:active()[0];
-  const trow=r=>`<button class="card trow" data-player="${esc(r.p.id)}" aria-label="${esc(r.p.name)}, ${ord(r.r)}, ${r.s} points"><img src="${cutImg(r.p)}" alt=""><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.group,r.p.ag].filter(Boolean).join(" · "))}</small></span><span class="rk">#${r.r}</span><b class="num">${r.s}</b></button>`;
+  // today and this week for the chosen group only
+  const t=(DAYS[TODAY]||{}).marks||{},marked=markedOn(TODAY),ids=new Set(ps.map(p=>p.id));
+  const touched=new Set();marked.forEach(x=>Object.entries(t[x]||{}).forEach(([id,r])=>{if(ids.has(id)&&Object.keys(r||{}).length)touched.add(id)}));
+  const pct=n?Math.round(touched.size/n*100):0,weekPts=ps.reduce((a,p)=>a+overall(p.id,wk),0);
+  const domPts=CFG.domains.map(x=>[x,ps.reduce((a,p)=>a+score(p.id,x,wk),0)]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,2);
+  const open=CFG.domains.filter(x=>!marked.includes(x));
+  const tops=rankList("Overall",g,range(S.htop)).filter(r=>r.s>0).slice(0,5),star=tops[0]?tops[0].p:ps[0];
+  const trow=r=>`<button class="card trow" data-player="${esc(r.p.id)}" aria-label="${esc(r.p.name)}, ${ord(r.r)}, ${r.s} points"><span class="rk">${r.r}</span><img src="${cutImg(r.p)}" alt=""><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc(r.p.ag)}</small></span><b class="num">${r.s}</b></button>`;
   return `
   <div class="hello">
-    <div class="me"><span class="hi">Hello 👋 · ${esc(fmtDate(TODAY))}</span><h1>Coach Siva</h1></div>
+    <div class="me"><span class="hi">Hello, Coach Siva · ${esc(fmtDate(TODAY))}</span><h1>${esc(g)} today</h1></div>
     <button class="rbtn" data-tab="setup" aria-label="Challenges and players">${GRIDI}</button>
   </div>
-  ${n?"":noPlayers()}
-  ${cols(`<div class="bento">
-    <div class="card frame"><div class="lime pct"><b class="num">${pct}<small>%</small></b><span>Marked today</span><em class="num">${st.touched} of ${n}</em></div></div>
-    <div class="card mini"><span class="k">Players</span><b class="num">${n}</b><span class="s">${gs.length?gs.map(shortGroup).join(" · "):"active"}</span><i class="ic">${USERSI}</i></div>
-    <div class="card mini"><span class="k">This week</span><b class="num">${weekPts} <small>pts</small></b><span class="s">all domains</span><i class="ic">${NAVI.rank}</i></div>
+  ${active().length?chips("","grp",groups(),g):noPlayers()}
+  ${cols(`<div class="vhero">
+    <span class="blob"></span>
+    ${star?`<img src="${cutImg(star)}" alt="">`:""}
+    <div class="copy"><h2>Mark <mark>today's</mark> points</h2><p>${marked.length} of ${CFG.domains.length} domains done today.${open.length&&open.length<=3?" "+esc(open.join(" and "))+" still open.":""}</p></div>
+    ${domPts.map(([x,v],k)=>`<span class="tag t${k}">${ARROWI}${esc(x)} <b class="num">${v}</b></span>`).join("")}
+    <div class="big"><small>this week</small><b class="num">${weekPts}<sup>pts</sup></b></div>
+    <button class="go" data-go="points">Open Mark Points<i>${NEXTI}</i></button>
   </div>
-  <div class="duo">
-    <button class="card act" data-tab="rank"><i class="ic">${TROPHYI}</i><span>Leaderboard</span></button>
-    <button class="key" data-go="points" aria-label="Mark points">${NAVI.points}</button>
-    <button class="card act" data-tab="downloads"><i class="ic">${NAVI.downloads}</i><span>Downloads</span></button>
+  <div class="pair">
+    <div class="card dark mk"><span class="blob"></span><span class="k">Marked today</span><b class="num">${pct}<small>%</small></b><span class="s">${touched.size} of ${n} players</span></div>
+    ${star&&tops[0]?`<button class="card topc" data-player="${esc(star.id)}" aria-label="Top in ${esc(g)}: ${esc(star.name)}, ${tops[0].s} points"><i class="arr">${ARROWI}</i><span class="k">Top in group</span><img src="${cutImg(star)}" alt=""><span class="who"><span>${esc(firstName(star.name))}</span><b class="num">${tops[0].s}</b></span></button>`:`<div class="card topc"><span class="k">Top in group</span><span class="who"><span class="small">Save points to see the leader</span></span></div>`}
   </div>
-  ${chips("Group","grp",groups(),g)}
-  ${chips("","hdom",CFG.domains,d)}
+  ${installRow()}`,`${chips("","hdom",CFG.domains,d)}
   <div class="card fcard">${pair}
     <div class="m"><span>Top player</span><b class="ell">${w.top?esc(firstName(w.top.name)):"–"}</b></div>
     <div class="m"><span>Avg score</span><b>${w.avg||"–"}</b></div>
-  </div>
-  ${installRow()}`,`<div class="card glow">
-    ${star?`<img src="${cutImg(star)}" alt="">`:""}
-    <h2>Week progress</h2>
-    <div class="rings">${gs.map((g,i)=>{const v=groupWeek(g);return dial(v,i?92:150,v+"%",esc(shortGroup(g)),`${g} marked ${v}% this week`)}).join("")||`<span class="small">Week progress shows once your players have groups.</span>`}</div>
   </div>
   ${chips(`Top in ${esc(shortGroup(g))}`,"htop",["This week","This month"],S.htop,x=>PSHORT[x],"sm")}
   <div class="tops">${tops.map(trow).join("")||`<div class="card empty">Top players appear once you save points.</div>`}</div>`,"home")}`;
@@ -200,18 +190,26 @@ function playersPanel(){
 
 function rankView(){
   const g=curGrp(),rg=range(S.period),list=rankList(S.rdomain,g,rg);const [a,b,c]=list;
-  const pod=(r,cls)=>r?`<button class="pod ${cls}" data-player="${esc(r.p.id)}" aria-label="${ord(r.r)}: ${esc(r.p.name)}, ${r.s} points"><span class="no">${r.r}</span><img src="${cutImg(r.p)}" alt=""><span class="foot"><b>${esc(firstName(r.p.name))}</b><span class="num">${r.s}</span></span></button>`:`<span></span>`;
+  const [fa,sa]=a?splitName(a.p.name):["",""];
+  const tile=(r,cls)=>r?`<button class="pod ${cls}" data-player="${esc(r.p.id)}" aria-label="${ord(r.r)}: ${esc(r.p.name)}, ${r.s} points"><span class="no">${r.r}</span><img src="${cutImg(r.p)}" alt=""><span class="foot"><b>${esc(firstName(r.p.name))}</b><span class="num">${r.s}</span></span></button>`:"";
   return `
   ${title("Leader","board")}
-  ${chips("Group","grp",groups(),g)}
-  ${chips("Period","period",PERIODS,S.period,x=>PSHORT[x],"sm")}
-  ${cols(list.length?`<div class="podium">${pod(b,"second")}${pod(a,"first")}${pod(c,"third")}</div>`:noPlayers(),`${list.length?`<div class="card ranks">${list.slice(3).map(r=>`<button class="row" data-player="${esc(r.p.id)}"><span class="n">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.ag,r.p.group].filter(Boolean).join(" · "))}</small></span><span class="s or num">${r.s}</span></button>`).join("")||`<div class="empty">Only three players here.</div>`}</div>`:""}
+  ${chips("","grp",groups(),g)}
+  ${chips("","period",PERIODS,S.period,x=>PSHORT[x],"sm")}
+  ${cols(list.length?`<div class="podium">
+    <button class="pod first" data-player="${esc(a.p.id)}" aria-label="1st: ${esc(a.p.name)}, ${a.s} points">
+      <span class="slab"></span><img src="${cutImg(a.p)}" alt="">
+      <span class="who"><small>No. ${a.r} in ${esc(g)}</small><b>${fa?esc(fa)+"<br>":""}<em>${esc(sa)}</em></b></span>
+      <span class="score"><sup>pts</sup><b class="num">${a.s}</b></span><i class="arr">${ARROWI}</i>
+    </button>
+    ${b||c?`<div class="pair">${tile(b,"second")}${tile(c,"third")}</div>`:""}
+  </div>`:noPlayers(),`${list.length?`<div class="ranks">${list.slice(3).map(r=>`<button class="card row" data-player="${esc(r.p.id)}"><span class="n">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc(r.p.ag)}</small></span><span class="s num">${r.s}</span></button>`).join("")||`<div class="card empty">Everyone in ${esc(g)} is on the podium.</div>`}</div>`:""}
   <div class="filters" aria-label="Domain">${["Overall",...domainsWithData()].map(x=>`<button data-set="rdomain" data-val="${esc(x)}" aria-pressed="${x===S.rdomain}">${esc(x)}</button>`).join("")}</div>`,"rank")}`;
 }
 
 function downloadsView(){
   const ps=active();if(!S.dlp&&ps[0])S.dlp=ps[0].id;const dp=pById(S.dlp);
-  const tile=(n,t,kind)=>`<button class="tile card" data-pdf="${kind}" aria-label="Download ${t.replace("<br>"," ")} PDF" ${S.busy?"disabled":""}><span class="no">${n}</span><span class="t">${t}</span><span class="dl">${S.busy===kind?"…":DLI("#111")}</span></button>`;
+  const tile=(n,t,kind)=>`<button class="tile card" data-pdf="${kind}" aria-label="Download ${t.replace("<br>"," ")} PDF" ${S.busy?"disabled":""}><span class="no">${n}</span><span class="t">${t}</span><span class="dl">${S.busy===kind?"…":DLI("#C6F432")}</span></button>`;
   return `
   ${title("Down","loads",`<img class="ball" src="${BALL_IMG}" alt="">`)}
   ${chips("Period","dlPeriod",PERIODS,S.dlPeriod,x=>PSHORT[x])}
@@ -220,7 +218,7 @@ function downloadsView(){
       ${dp?`<img src="${cutImg(dp)}" alt="">`:""}
       <span class="sub">One PDF per player</span>
       <span class="big">PLAYER<br>REPORT CARDS</span>
-      <span class="dl">${S.busy==="card"?"…":DLI("#C8F23D")}</span>
+      <span class="dl">${S.busy==="card"?"…":DLI("#C6F432")}</span>
     </button>
     <div class="card pad stack pick">
       <select id="dlplayer" aria-label="Player for the report card">${ps.map(p=>`<option value="${esc(p.id)}" ${S.dlp===p.id?"selected":""}>${esc(p.name)} · ${esc(p.ag)}</option>`).join("")||"<option>No players yet</option>"}</select>
@@ -237,7 +235,7 @@ function spark(vals){
   const w=160,h=56,pad=6,mx=Math.max(...vals,1),mn=Math.min(...vals,0),span=mx-mn||1;
   const pts=vals.map((v,i)=>[pad+i*(w-2*pad)/(vals.length-1),h-pad-(v-mn)/span*(h-2*pad)]);
   const d=pts.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" ");const l=pts.at(-1);
-  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Weekly points ${vals.join(", ")}"><path d="${d} L${l[0].toFixed(1)} ${h-pad} L${pad} ${h-pad} Z" fill="rgba(200,242,61,.14)"/><path d="${d}" fill="none" stroke="#C8F23D" stroke-width="2.2" stroke-linejoin="round"/><circle cx="${l[0].toFixed(1)}" cy="${l[1].toFixed(1)}" r="3.5" fill="#C8F23D"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Weekly points ${vals.join(", ")}"><path d="${d} L${l[0].toFixed(1)} ${h-pad} L${pad} ${h-pad} Z" fill="rgba(198,244,50,.45)"/><path d="${d}" fill="none" stroke="#111" stroke-width="2.2" stroke-linejoin="round"/><circle cx="${l[0].toFixed(1)}" cy="${l[1].toFixed(1)}" r="3.5" fill="#C6F432" stroke="#111" stroke-width="1.5"/></svg>`;
 }
 function monthTotal(pid,offset){const d=new Date(TODAY+"T00:00");d.setDate(1);d.setMonth(d.getMonth()+offset);const a=iso(d);d.setMonth(d.getMonth()+1);d.setDate(0);return overall(pid,[a,iso(d)])}
 function cardData(pid,period){
@@ -258,10 +256,10 @@ function reportView(){
   return `
   <div class="head">${backBtn('data-act="back"')}<button class="gbtn sm" data-pdf="card" data-pid="${esc(p.id)}" ${S.busy?"disabled":""}>${S.busy==="card"?"Making PDF…":"PDF report"}</button></div>
   ${cols(`<div class="hero">
-    <img src="${cutImg(p)}" alt="">
+    <span class="slab"></span><img src="${cutImg(p)}" alt="">
     ${dial(c.ahead,118,c.ahead+"%","ahead",`Ahead of ${c.ahead}% of ${c.g}`)}
     <div class="cap">Report card</div>
-    <div class="name">${first?esc(first)+"<br>":""}${esc(sur)}</div>
+    <div class="name">${first?esc(first)+"<br>":""}<em>${esc(sur)}</em></div>
     <div class="tags"><span>${c.oGrp?"#"+c.oGrp+" in ":""}${esc(c.g)}</span><span>${esc(p.ag)}</span></div>
   </div>
   <div class="tiles three">
