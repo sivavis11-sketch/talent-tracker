@@ -1,6 +1,6 @@
 // ================= screens: black cards, lime accent, glowing ring gauges and player photos (Siva's reference UI) =================
 const S={tab:"home",date:TODAY,doms:["Daily"],grp:(()=>{try{return localStorage.getItem("tt-grp")||""}catch(_){return ""}})(),setDom:"Daily",setMode:"acts",newAct:"",newMax:"",newDom:"",
-  hdom:"Daily",htop:"This week",rdomain:"Overall",age:"All",period:"All time",dlPeriod:"This month",player:null,dlp:"",notes:true,np:{name:"",group:"",dob:""},sync:null,busy:""};
+  hdom:"Daily",htop:"This week",rdomain:"Overall",period:"All time",dlPeriod:"This month",player:null,dlp:"",notes:true,np:{name:"",group:"",dob:""},sync:null,busy:""};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 // big "points saved" sign after Save day: a lime tick on success, a clock when kept offline, red on failure
@@ -42,15 +42,15 @@ function todayStats(){
   return {marked,touched:[...touched].filter(pById).length};
 }
 // this week's numbers for one domain: best single-day count per activity, top player, average per player
-function domainWeek(d){
+function domainWeek(d,g){
   const wk=range("This week"),best={},by=index();let sum=0,np=0;
-  active().forEach(p=>{let s=0;((by[p.id]||{})[d]||[]).forEach(([dt,v,r])=>{if(!inR(dt,wk))return;s+=v;Object.entries(r).forEach(([k,x])=>{best[k]=Math.max(best[k]||0,+x||0)})});if(s>0){sum+=s;np++}});
-  const top=rankList(d,"All",wk)[0];
+  inGrp(g).forEach(p=>{let s=0;((by[p.id]||{})[d]||[]).forEach(([dt,v,r])=>{if(!inR(dt,wk))return;s+=v;Object.entries(r).forEach(([k,x])=>{best[k]=Math.max(best[k]||0,+x||0)})});if(s>0){sum+=s;np++}});
+  const top=rankList(d,g,wk)[0];
   return {best,top:top&&top.s>0?top.p:null,avg:np?Math.round(sum/np*10)/10:0,sum};
 }
 // share of a group's players with any points this week
 function groupWeek(g){
-  const wk=range("This week"),ps=active().filter(p=>p.group===g),by=index();
+  const wk=range("This week"),ps=inGrp(g),by=index();
   const done=ps.filter(p=>Object.values(by[p.id]||{}).some(rows=>rows.some(([dt])=>inR(dt,wk)))).length;
   return ps.length?Math.round(done/ps.length*100):0;
 }
@@ -88,11 +88,11 @@ function connectView(){
 function homeView(){
   const st=todayStats(),n=active().length,pct=n?Math.round(st.touched/n*100):0,wk=range("This week");
   if(!CFG.domains.includes(S.hdom))S.hdom=CFG.domains[0];
-  const d=S.hdom,w=domainWeek(d),all=CFG.acts[d]||[],as=(all.filter(a=>a.id in w.best).length?all.filter(a=>a.id in w.best):all).slice(0,2);
+  const g=curGrp(),d=S.hdom,w=domainWeek(d,g),all=CFG.acts[d]||[],as=(all.filter(a=>a.id in w.best).length?all.filter(a=>a.id in w.best):all).slice(0,2);
   const box=(t,v,suf)=>`<div><div class="t">${esc(t)}</div><div class="b num">${v} <span>${suf}</span></div></div>`;
   const pair=as.length>=2?as.map(a=>box(a.name,w.best[a.id]||0,"best")).join(""):box(as[0]?as[0].name:"Points",as[0]?w.best[as[0].id]||0:0,"best")+box("This week",w.sum,"pts");
   const gs=groups().slice(0,3),weekPts=active().reduce((a,p)=>a+overall(p.id,wk),0);
-  const tops=rankList("Overall","All",range(S.htop)).filter(r=>r.s>0).slice(0,3),star=tops[0]?tops[0].p:active()[0];
+  const tops=rankList("Overall",g,range(S.htop)).filter(r=>r.s>0).slice(0,3),star=tops[0]?tops[0].p:active()[0];
   const trow=r=>`<button class="card trow" data-player="${esc(r.p.id)}" aria-label="${esc(r.p.name)}, ${ord(r.r)}, ${r.s} points"><img src="${cutImg(r.p)}" alt=""><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.group,r.p.ag].filter(Boolean).join(" · "))}</small></span><span class="rk">#${r.r}</span><b class="num">${r.s}</b></button>`;
   return `
   <div class="hello">
@@ -110,6 +110,7 @@ function homeView(){
     <button class="key" data-go="points" aria-label="Mark points">${NAVI.points}</button>
     <button class="card act" data-tab="downloads"><i class="ic">${NAVI.downloads}</i><span>Downloads</span></button>
   </div>
+  ${chips("Group","grp",groups(),g)}
   ${chips("","hdom",CFG.domains,d)}
   <div class="card fcard">${pair}
     <div class="m"><span>Top player</span><b class="ell">${w.top?esc(firstName(w.top.name)):"–"}</b></div>
@@ -120,14 +121,14 @@ function homeView(){
     <h2>Week progress</h2>
     <div class="rings">${gs.map((g,i)=>{const v=groupWeek(g);return dial(v,i?92:150,v+"%",esc(shortGroup(g)),`${g} marked ${v}% this week`)}).join("")||`<span class="small">Week progress shows once your players have groups.</span>`}</div>
   </div>
-  ${chips("Top","htop",["This week","This month"],S.htop,x=>PSHORT[x],"sm")}
+  ${chips(`Top in ${esc(shortGroup(g))}`,"htop",["This week","This month"],S.htop,x=>PSHORT[x],"sm")}
   <div class="tops">${tops.map(trow).join("")||`<div class="card empty">Top players appear once you save points.</div>`}</div>`,"home")}`;
 }
 
 function pointsView(){
-  if(S.grp!=="All"&&!groups().includes(S.grp))S.grp=groups()[0]||"All";
+  const g=curGrp();
   const sel=CFG.domains.filter(d=>S.doms.includes(d));
-  const ps=active().filter(p=>S.grp==="All"||p.group===S.grp);
+  const ps=inGrp(g);
   const marked=markedOn(S.date),cnt=sel.filter(counts),m=dayOf(S.date).marks;
   const rowTot=pid=>cnt.reduce((a,d)=>a+sumRow((m[d]||{})[pid]),0);
   const head=d=>acts(d).length||1;
@@ -142,7 +143,7 @@ function pointsView(){
   return `
   <div class="head">${backBtn('data-tab="home"')}${when(S.date,true,`<input type="date" id="date" value="${S.date}" max="${TODAY}" aria-label="Change date">`)}</div>
   ${title("Mark ","Points")}
-  ${cols(`${groups().length?chips("Group","grp",[...groups(),"All"],S.grp,x=>x==="All"?"All groups":x):`<span class="small">Groups appear here after you sync or add players.</span>`}
+  ${cols(`${active().length?chips("Group","grp",groups(),g):""}
   <div class="dgrid">${CFG.domains.map(d=>`<button data-dom="${esc(d)}" aria-pressed="${sel.includes(d)}">${esc(d)}${marked.includes(d)?'<span class="dot" aria-label="has points on this date"></span>':""}</button>`).join("")}</div>
   ${sel.includes("Special")?`<div class="card pad stack"><h3>Special challenges</h3>
     ${specials().map((x,i)=>`<div class="rowx" style="align-items:flex-end"><div style="flex:2"><span class="small">Challenge ${i+1}</span><input type="text" data-spname="${x.id}" placeholder="What was it?" value="${esc(x.name)}"></div>
@@ -198,14 +199,14 @@ function playersPanel(){
 }
 
 function rankView(){
-  const rg=range(S.period),list=rankList(S.rdomain,S.age,rg);const [a,b,c]=list;
+  const g=curGrp(),rg=range(S.period),list=rankList(S.rdomain,g,rg);const [a,b,c]=list;
   const pod=(r,cls)=>r?`<button class="pod ${cls}" data-player="${esc(r.p.id)}" aria-label="${ord(r.r)}: ${esc(r.p.name)}, ${r.s} points"><span class="no">${r.r}</span><img src="${cutImg(r.p)}" alt=""><span class="foot"><b>${esc(firstName(r.p.name))}</b><span class="num">${r.s}</span></span></button>`:`<span></span>`;
   return `
   ${title("Leader","board")}
-  ${chips("This","period",PERIODS,S.period,x=>PSHORT[x])}
+  ${chips("Group","grp",groups(),g)}
+  ${chips("Period","period",PERIODS,S.period,x=>PSHORT[x],"sm")}
   ${cols(list.length?`<div class="podium">${pod(b,"second")}${pod(a,"first")}${pod(c,"third")}</div>`:noPlayers(),`${list.length?`<div class="card ranks">${list.slice(3).map(r=>`<button class="row" data-player="${esc(r.p.id)}"><span class="n">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc([r.p.ag,r.p.group].filter(Boolean).join(" · "))}</small></span><span class="s or num">${r.s}</span></button>`).join("")||`<div class="empty">Only three players here.</div>`}</div>`:""}
-  <div class="filters" aria-label="Domain">${["Overall",...domainsWithData()].map(x=>`<button data-set="rdomain" data-val="${esc(x)}" aria-pressed="${x===S.rdomain}">${esc(x)}</button>`).join("")}</div>
-  <div class="filters" aria-label="Age group">${["All",...ageGroups()].map(x=>`<button data-set="age" data-val="${esc(x)}" aria-pressed="${x===S.age}">${esc(x==="All"?"All ages":x)}</button>`).join("")}</div>`,"rank")}`;
+  <div class="filters" aria-label="Domain">${["Overall",...domainsWithData()].map(x=>`<button data-set="rdomain" data-val="${esc(x)}" aria-pressed="${x===S.rdomain}">${esc(x)}</button>`).join("")}</div>`,"rank")}`;
 }
 
 function downloadsView(){
@@ -225,10 +226,9 @@ function downloadsView(){
       <select id="dlplayer" aria-label="Player for the report card">${ps.map(p=>`<option value="${esc(p.id)}" ${S.dlp===p.id?"selected":""}>${esc(p.name)} · ${esc(p.ag)}</option>`).join("")||"<option>No players yet</option>"}</select>
       <button class="cbtn" data-act="preview" ${ps.length?"":"disabled"}>Preview report card</button>
     </div>
-    ${tile("01","Overall<br>ranking","overall")}
-    ${tile("02","Age<br>groups","age")}
-    ${tile("03","Domain<br>ranking","domains")}
-    ${tile("04","Day<br>sheets","days")}
+    ${tile("01","Group<br>rankings","overall")}
+    ${tile("02","Domain<br>ranking","domains")}
+    ${tile("03","Day<br>sheets","days")}
   </div>
   <div class="card toggle"><span>Include coach notes</span><button class="sw" data-act="note" aria-pressed="${S.notes}">${S.notes?"On":"Off"}</button></div>`;
 }
@@ -241,28 +241,28 @@ function spark(vals){
 }
 function monthTotal(pid,offset){const d=new Date(TODAY+"T00:00");d.setDate(1);d.setMonth(d.getMonth()+offset);const a=iso(d);d.setMonth(d.getMonth()+1);d.setDate(0);return overall(pid,[a,iso(d)])}
 function cardData(pid,period){
-  const p=pById(pid),rg=range(period),wk=range("This week"),all=active(),n=all.length;
-  const has=overall(pid,rg)>0,oAge=has?rankOf(pid,"Overall",p.ag,rg):0,oAll=has?rankOf(pid,"Overall","All",rg):0,nAge=all.filter(x=>x.ag===p.ag).length;
-  const ahead=n>1?Math.round(all.filter(x=>overall(x.id,rg)<overall(pid,rg)).length/(n-1)*100):0;
-  const doms=domainsWithData().map(d=>{const w=weekly(pid,d),pts=score(pid,d,rg);return {d,pts,week:score(pid,d,wk),best:Math.max(...w),rAge:pts?rankOf(pid,d,p.ag,rg):0,rAll:pts?rankOf(pid,d,"All",rg):0,w,counts:counts(d)}});
+  const p=pById(pid),g=grpOf(p),rg=range(period),wk=range("This week"),peers=inGrp(g),n=peers.length;
+  const oGrp=overall(pid,rg)>0?rankOf(pid,"Overall",g,rg):0;
+  const ahead=n>1?Math.round(peers.filter(x=>overall(x.id,rg)<overall(pid,rg)).length/(n-1)*100):0;
+  const doms=domainsWithData().map(d=>{const w=weekly(pid,d),pts=score(pid,d,rg);return {d,pts,week:score(pid,d,wk),best:Math.max(...w),rGrp:pts?rankOf(pid,d,g,rg):0,w,counts:counts(d)}});
   const days=new Set();Object.values(index()[pid]||{}).forEach(rows=>rows.forEach(([dt])=>{if(inR(dt,rg))days.add(dt)}));
   const cur=monthTotal(pid,0),prev=monthTotal(pid,-1),change=prev?Math.round((cur-prev)/prev*100):null;
-  return {p,period,rg,oAge,oAll,n,nAge,ahead,total:overall(pid,rg),doms,days:days.size,cur,change,jug:jugBest(pid,rg),note:NOTES[pid]||""};
+  return {p,g,period,rg,oGrp,n,ahead,total:overall(pid,rg),doms,days:days.size,cur,change,jug:jugBest(pid,rg),note:NOTES[pid]||""};
 }
 function reportView(){
   const p=pById(S.player);if(!p){S.player=null;return homeView()}
   const c=cardData(p.id,S.period),mx=Math.max(1,...c.doms.map(x=>x.pts)),[first,sur]=splitName(p.name);
-  const rows=c.doms.map(x=>`<tr><td>${esc(x.d)}${x.counts?"":' <span class="small">(not in total)</span>'}</td><td class="r">${x.pts}</td><td class="r">${x.week}</td><td class="r">${ord(x.rAge)} / ${ord(x.rAll)}</td></tr>`).join("");
+  const rows=c.doms.map(x=>`<tr><td>${esc(x.d)}${x.counts?"":' <span class="small">(not in total)</span>'}</td><td class="r">${x.pts}</td><td class="r">${x.week}</td><td class="r">${ord(x.rGrp)}</td></tr>`).join("");
   const trends=c.doms.map(x=>{const ch=x.w.at(-1)-x.w.at(-2);return `<figure class="pit"><figcaption><span>${esc(x.d)}</span><span class="${ch>=0?"or":"rd"}">${ch>=0?"+":""}${ch}</span></figcaption>${spark(x.w)}</figure>`}).join("");
   const chg=c.change==null?(c.cur?"New":"–"):(c.change>=0?"+":"")+c.change+"%";
   return `
   <div class="head">${backBtn('data-act="back"')}<button class="gbtn sm" data-pdf="card" data-pid="${esc(p.id)}" ${S.busy?"disabled":""}>${S.busy==="card"?"Making PDF…":"PDF report"}</button></div>
   ${cols(`<div class="hero">
     <img src="${cutImg(p)}" alt="">
-    ${dial(c.ahead,118,c.ahead+"%","ahead",`Ahead of ${c.ahead}% of players`)}
+    ${dial(c.ahead,118,c.ahead+"%","ahead",`Ahead of ${c.ahead}% of ${c.g}`)}
     <div class="cap">Report card</div>
     <div class="name">${first?esc(first)+"<br>":""}${esc(sur)}</div>
-    <div class="tags"><span>${c.oAge?"#"+c.oAge+" in ":""}${esc(p.ag)}</span>${p.group?`<span>${esc(p.group)}</span>`:""}</div>
+    <div class="tags"><span>${c.oGrp?"#"+c.oGrp+" in ":""}${esc(c.g)}</span><span>${esc(p.ag)}</span></div>
   </div>
   <div class="tiles three">
     ${stat(String(c.total),"Total pts","lime")}
@@ -276,10 +276,10 @@ function reportView(){
   </div>
   `,`<div class="pit note"><label for="note" class="or">Coach note</label><textarea id="note" rows="2" placeholder="Write a note for ${esc(firstName(p.name))}'s report">${esc(c.note)}</textarea></div>
   ${saveLine()}
-  <div class="card" style="overflow-x:auto;padding:6px 0;border-radius:24px"><table class="t"><thead><tr><th>Ranks</th><th class="r">Points</th><th class="r">This wk</th><th class="r">${esc(p.ag)} / all</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="card" style="overflow-x:auto;padding:6px 0;border-radius:24px"><table class="t"><thead><tr><th>Ranks</th><th class="r">Points</th><th class="r">This wk</th><th class="r">In group</th></tr></thead><tbody>${rows}</tbody></table>
     <table class="t"><thead><tr><th>Juggling best</th>${c.jug.map(([n])=>`<th class="r">${esc(n)}</th>`).join("")}</tr></thead><tbody><tr><td>Count</td>${c.jug.map(([,v])=>`<td class="r">${v}</td>`).join("")}</tr></tbody></table></div>
   <div class="card pad" style="border-radius:24px"><div class="lbl" style="margin-bottom:12px">Trend<small>last 8 weeks</small></div><div class="trend">${trends}</div></div>
-  <div class="small">Ahead of ${c.ahead}% of players · ${ord(c.oAll)} of ${c.n} overall</div>`,"report")}`;
+  <div class="small">Ahead of ${c.ahead}% of ${esc(c.g)} · ${c.oGrp?ord(c.oGrp)+" of "+c.n+" in the group":"no points yet in this period"}</div>`,"report")}`;
 }
 
 // ---------- render ----------

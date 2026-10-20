@@ -57,7 +57,7 @@ async function cardHeader(doc,c,PL){
   doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(60,72,20);doc.text("Report card  ·  "+PL,x0+8,y0+10);
   doc.setFont("helvetica","bold");doc.setTextColor(...CHAR);let fs=30;doc.setFontSize(fs);while(fs>16&&Math.max(doc.getTextWidth(first.toUpperCase()),doc.getTextWidth(sur.toUpperCase()))>cw*.55){fs-=2;doc.setFontSize(fs)}
   doc.text([first,sur].filter(Boolean).map(x=>x.toUpperCase()),x0+8,y0+24,{lineHeightFactor:1});
-  doc.setFont("helvetica","bold");doc.setFontSize(8.5);let tx=x0+8;[(c.oAge?"#"+c.oAge+" in ":"")+p.ag,p.group].filter(Boolean).forEach(t=>{const tw=doc.getTextWidth(t)+8;doc.setFillColor(...CHAR);doc.roundedRect(tx,y0+ch-14,tw,7,3.5,3.5,"F");doc.setTextColor(255,255,255);doc.text(t,tx+4,y0+ch-9.2);tx+=tw+3});
+  doc.setFont("helvetica","bold");doc.setFontSize(8.5);let tx=x0+8;[(c.oGrp?"#"+c.oGrp+" in ":"")+c.g,p.ag].filter(Boolean).forEach(t=>{const tw=doc.getTextWidth(t)+8;doc.setFillColor(...CHAR);doc.roundedRect(tx,y0+ch-14,tw,7,3.5,3.5,"F");doc.setTextColor(255,255,255);doc.text(t,tx+4,y0+ch-9.2);tx+=tw+3});
   const chg=c.change==null?(c.cur?"New":"-"):(c.change>=0?"+":"")+c.change+"%",bw=(cw-8)/3;
   [[String(c.total),"Total pts",LIME],[String(c.days),"Days",[255,255,255]],[chg,"vs last month",[255,255,255]]].forEach(([v,k,col],i)=>{const x=x0+i*(bw+4),y=y0+ch+6;
     doc.setFillColor(28,28,28);doc.roundedRect(x,y,bw,24,5,5,"F");doc.setFont("helvetica","bold");
@@ -81,10 +81,10 @@ async function buildPdf(kind,pid){
   if(kind==="card"){
     const c=cardData(pid,period),p=c.p;
     y=await cardHeader(doc,c,PL);
-    doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(...INK);doc.text(`Ahead of ${c.ahead}% of players`,14,y);
+    doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(...INK);doc.text(`Ahead of ${c.ahead}% of ${c.g}`,14,y);
     doc.setFont("helvetica","normal");doc.setTextColor(...MUTE);doc.text([p.adm?"Adm. "+p.adm:"",p.gender||""].filter(Boolean).join("  ·  "),W-14,y,{align:"right"});
     y=section(doc,y+10,"Scores and ranks by domain");
-    y=tbl(doc,y,["Domain","Points","This week","Best week","Rank in "+p.ag,"Rank of all"],c.doms.map(x=>[x.d+(x.counts?"":" *"),x.pts,x.week,x.best,ord(x.rAge),ord(x.rAll)]),{columnStyles:{1:{halign:"right"},2:{halign:"right"},3:{halign:"right"},4:{halign:"right"},5:{halign:"right"}}});
+    y=tbl(doc,y,["Domain","Points","This week","Best week","Rank in "+c.g],c.doms.map(x=>[x.d+(x.counts?"":" *"),x.pts,x.week,x.best,ord(x.rGrp)]),{columnStyles:{1:{halign:"right"},2:{halign:"right"},3:{halign:"right"},4:{halign:"right"}}});
     if(c.doms.some(x=>!x.counts)){doc.setFontSize(7.5);doc.setTextColor(...MUTE);doc.text("* not added to the overall total",14,y+4.5);y+=4}
     y=section(doc,y+10,"Juggling best counts");
     y=tbl(doc,y,c.jug.map(([n])=>n),[c.jug.map(([,v])=>v)],{styles:{halign:"center",fontSize:11,textColor:INK}});
@@ -101,18 +101,16 @@ async function buildPdf(kind,pid){
       doc.setFillColor(...TINT);doc.roundedRect(14,y,W-28,lines.length*5+8,3,3,"F");doc.text(lines,18,y+7)}
     file=`${p.name} report card.pdf`;
   }else if(kind==="overall"){
-    y=pdfHeader(doc,"Overall leaderboard","Academy rankings",PL);
-    const list=rankList("Overall","All",rg);
-    tbl(doc,y,["#","Player","Age","Group","Overall",...doms],list.map(r=>[r.r,r.p.name,r.p.ag,r.p.group||"",r.s,...doms.map(d=>score(r.p.id,d,rg))]),{styles:{fontSize:doms.length>6?7.5:9},columnStyles:{4:{fontStyle:"bold"}}});
-    file="Overall leaderboard.pdf";
-  }else if(kind==="age"){
-    y=pdfHeader(doc,"Leaderboard by age group","Age group rankings",PL);
-    ageGroups().forEach(ag=>{y=section(doc,y+2,ag);y=tbl(doc,y,["#","Player","Group","Overall",...doms],rankList("Overall",ag,rg).map(r=>[r.r,r.p.name,r.p.group||"",r.s,...doms.map(d=>score(r.p.id,d,rg))]),{styles:{fontSize:doms.length>6?7.5:9}})+8});
-    file="Leaderboard by age group.pdf";
+    // one ranking per group: players are never ranked against other groups
+    y=pdfHeader(doc,"Group leaderboards","Group rankings",PL);
+    groups().forEach((g,i)=>{if(i&&y>doc.internal.pageSize.getHeight()-60){doc.addPage();y=20}y=section(doc,y+2,g);
+      y=tbl(doc,y,["#","Player","Age","Overall",...doms],rankList("Overall",g,rg).map(r=>[r.r,r.p.name,r.p.ag,r.s,...doms.map(d=>score(r.p.id,d,rg))]),{styles:{fontSize:doms.length>6?7.5:9},columnStyles:{3:{fontStyle:"bold"}}})+8});
+    file="Group rankings.pdf";
   }else if(kind==="domains"){
-    y=pdfHeader(doc,"Domain rankings","Who leads each domain",PL);
+    y=pdfHeader(doc,"Domain rankings","Who leads each domain, group by group",PL);
     doms.forEach((d,i)=>{if(i){doc.addPage();y=20}y=section(doc,y,d+(counts(d)?"":" (not in overall total)"));
-      tbl(doc,y,["#","Player","Age","Group","Points","Rank in age group"],rankList(d,"All",rg).map(r=>[r.r,r.p.name,r.p.ag,r.p.group||"",r.s,ord(rankOf(r.p.id,d,r.p.ag,rg))]))});
+      groups().forEach(g=>{doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(...GREEN);doc.text(g,14,y+5);
+        y=tbl(doc,y+7,["#","Player","Age","Points"],rankList(d,g,rg).map(r=>[r.r,r.p.name,r.p.ag,r.s]))+4})});
     file="Domain rankings.pdf";
   }else{
     y=pdfHeader(doc,"Day sheets","Points by date",PL);
@@ -121,9 +119,9 @@ async function buildPdf(kind,pid){
     dates.forEach(dt=>{y=section(doc,y+4,fmtDate(dt)+" "+dt.slice(0,4));const day=DAYS[dt];
       markedOn(dt).forEach(d=>{const as=d==="Special"?(day.specials||[]):(CFG.acts[d]||[]);const m=day.marks[d]||{};
         const ids=new Set(as.map(a=>a.id));Object.values(m).forEach(r=>Object.keys(r||{}).forEach(k=>{if(!ids.has(k)){ids.add(k);as.push({id:k,name:"(removed)"})}}));
-        const rows=active().filter(p=>m[p.id]&&Object.keys(m[p.id]).length).map(p=>[p.name,...as.map(a=>m[p.id][a.id]??""),sumRow(m[p.id])]);
+        const rows=groups().flatMap(g=>inGrp(g).filter(p=>m[p.id]&&Object.keys(m[p.id]).length).map(p=>[p.name,g,...as.map(a=>m[p.id][a.id]??""),sumRow(m[p.id])]));
         doc.setFontSize(9.5);doc.setTextColor(...GREEN);doc.text(d,14,y+1);
-        y=tbl(doc,y+3,["Player",...as.map(a=>(a.name||"Special")+(a.max!=null?" /"+a.max:"")),"Total"],rows,{styles:{fontSize:as.length>6?7:8.5},columnStyles:{0:{cellWidth:34}}})+6})});
+        y=tbl(doc,y+3,["Player","Group",...as.map(a=>(a.name||"Special")+(a.max!=null?" /"+a.max:"")),"Total"],rows,{styles:{fontSize:as.length>6?7:8.5},columnStyles:{0:{cellWidth:34}}})+6})});
     file="Day sheets.pdf";
   }
   pdfFooters(doc);

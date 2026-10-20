@@ -120,7 +120,7 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   const pdfPath = path.join(SHOTS, 'card.pdf'); await dl.saveAs(pdfPath);
   ok(fs.statSync(pdfPath).size > 20000, 'report card PDF downloads (' + dl.suggestedFilename() + ')');
   await pg.click('[data-act=back]'); await pg.click('nav [data-tab=downloads]'); await wait(200);
-  for (const k of ['overall', 'age', 'domains', 'days']) {
+  for (const k of ['overall', 'domains', 'days']) {
     const [d] = await Promise.all([pg.waitForEvent('download', { timeout: 15000 }), pg.click(`[data-pdf=${k}]`)]);
     await d.saveAs(path.join(SHOTS, k + '.pdf')); ok(true, k + ' PDF downloads');
   }
@@ -136,6 +136,7 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   await pg.click('nav [data-tab=home]'); await wait(300); await shot('8-home-week');
   ok(await pg.isVisible('nav.tabs [data-tab=rank]') && await pg.isVisible('.hello .rbtn') && await pg.isVisible('.duo .key[data-go=points]'), 'Home shows the bottom bar, the round menu button and the Mark points key');
   ok(await pg.isVisible('.bento .pct') && await pg.isVisible('.glow .dial svg.gauge') && await pg.isVisible('.glow > img'), 'Home shows the lime marked-today tile and the player hero with glowing gauges');
+  ok(await pg.evaluate(() => S.grp) === 'GROUP 2', 'the chosen group is remembered after reopening the app');
   ok(await pg.isVisible('.trow[data-player]'), 'Home shows this week\'s top players');
   await pg.click('.trow[data-player]'); await wait(300);
   ok(await pg.isVisible('.hero .name') && await pg.isVisible('nav.tabs [data-tab=home]'), 'a top player card opens that player\'s report card');
@@ -153,6 +154,19 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   ok(await pg.evaluate(() => getComputedStyle(document.querySelector('.cols.report')).gridTemplateColumns.split(' ').length === 2), 'computer layout for the report card');
   await pg.setViewportSize({ width: 390, height: 844 }); await wait(200);
   ok(await pg.evaluate(() => getComputedStyle(document.querySelector('.cols')).display === 'contents' && document.documentElement.scrollWidth <= innerWidth), 'phone layout still stacks in one column');
+  // group-wise: marking and the leaderboard only ever show one group, and there is no "all groups" choice
+  await pg.setViewportSize({ width: 390, height: 844 }); await wait(200);
+  await pg.click('nav.tabs [data-tab=rank]'); await wait(300);
+  const gw = await pg.evaluate(() => { const g = S.grp, ids = [...document.querySelectorAll('.podium [data-player], .ranks [data-player]')].map(b => b.dataset.player);
+    return { g, groups: groups(), n: ids.length, size: inGrp(g).length, same: ids.every(id => grpOf(pById(id)) === g), all: !!document.querySelector('[data-set=grp][data-val=All]') }; });
+  ok(gw.groups.length > 1 && gw.n === gw.size && gw.same && !gw.all, 'leaderboard ranks one group at a time ' + JSON.stringify(gw));
+  const other = gw.groups.find(x => x !== gw.g);
+  await pg.click(`[data-set=grp][data-val="${other}"]`); await wait(300);
+  const gw2 = await pg.evaluate(() => [...document.querySelectorAll('.podium [data-player], .ranks [data-player]')].map(b => grpOf(pById(b.dataset.player))));
+  ok(gw2.length && gw2.every(x => x === other), 'switching group shows only that group ' + JSON.stringify(gw2));
+  await pg.click('nav.tabs [data-tab=points]'); await wait(300);
+  const pt = await pg.evaluate(() => ({ g: S.grp, rows: [...document.querySelectorAll('input[data-cell]')].map(i => grpOf(pById(i.dataset.cell.split('|')[1]))), all: !!document.querySelector('[data-set=grp][data-val=All]') }));
+  ok(pt.g === other && pt.rows.length && pt.rows.every(x => x === other) && !pt.all, 'Mark Points shows the same single group ' + JSON.stringify({ g: pt.g, n: pt.rows.length }));
   ok(errs.length === 0, 'no page errors ' + JSON.stringify(errs));
   console.log('script calls:', calls);
   await br.close(); server.close();
