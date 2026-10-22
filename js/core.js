@@ -79,7 +79,8 @@ const overall=(pid,rg)=>Object.keys(index()[pid]||{}).filter(counts).reduce((a,d
 const domScore=(pid,d,rg)=>d==="Overall"?overall(pid,rg):score(pid,d,rg);
 function rankList(domain,grp,rg){
   const arr=inGrp(grp).map(p=>({p,s:domScore(p.id,domain,rg)})).sort((a,b)=>b.s-a.s||a.p.name.localeCompare(b.p.name));
-  let r=0,prev=null;arr.forEach((x,i)=>{if(x.s!==prev){r=i+1;prev=x.s}x.r=r});return arr;
+  // Dense ranks: players on the same points share a rank and the next rank is the next number (1, 1, 2), never skipped.
+  let r=0,prev=null;arr.forEach(x=>{if(x.s!==prev){r++;prev=x.s}x.r=r});return arr;
 }
 const rankOf=(pid,d,grp,rg)=>{const x=rankList(d,grp,rg).find(r=>r.p.id===pid);return x?x.r:0};
 function weekly(pid,d,n=8){

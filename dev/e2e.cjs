@@ -167,6 +167,26 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   await pg.click('nav.tabs [data-tab=points]'); await wait(300);
   const pt = await pg.evaluate(() => ({ g: S.grp, rows: [...document.querySelectorAll('input[data-cell]')].map(i => grpOf(pById(i.dataset.cell.split('|')[1]))), all: !!document.querySelector('[data-set=grp][data-val=All]') }));
   ok(pt.g === other && pt.rows.length && pt.rows.every(x => x === other) && !pt.all, 'Mark Points shows the same single group ' + JSON.stringify({ g: pt.g, n: pt.rows.length }));
+  // ties: players on the same points share a rank, ranks never skip (1, 1, 2, 2, 3, 4, 4, 5),
+  // tied players share the No. 1 poster and the 2nd/3rd cards, and every player still has a button
+  await pg.click('nav.tabs [data-tab=rank]'); await wait(200);
+  const tie = await pg.evaluate(() => {
+    const pts = [50, 50, 40, 40, 30, 20, 20, 10], d = dayOf(TODAY); d.marks.Daily = d.marks.Daily || {};
+    pts.forEach((v, i) => { PLAYERS.push({ id: 'tie-' + i, name: 'Tie Player' + i, group: 'GROUP T', ag: 'U12' }); d.marks.Daily['tie-' + i] = { x: v }; });
+    S.grp = 'GROUP T'; S.rdomain = 'Overall'; S.period = 'All time'; bump(); render();
+    const q = s => [...document.querySelectorAll(s)];
+    return { ranks: rankList('Overall', 'GROUP T', range('All time')).map(r => r.r).join(), joint: q('.pod.first.joint .h[data-player]').length,
+      second: q('.pod.second.shared .mate[data-player]').length, third: q('.pod.third[data-player]').length,
+      rows: q('.ranks .row .n').map(e => e.textContent).join(), tied: q('.ranks .eq').length,
+      buttons: q('.podium [data-player], .ranks [data-player]').length, each: !!document.querySelector('.pod.first .score i') };
+  });
+  ok(tie.ranks === '1,1,2,2,3,4,4,5' && tie.joint === 2 && tie.second === 2 && tie.third === 1 && tie.rows === '4,4,5' && tie.tied === 2 && tie.buttons === 8 && tie.each,
+    'tied players share the No. 1 poster and the 2nd card, and ranks never skip ' + JSON.stringify(tie));
+  await shot('4b-rank-ties');
+  await pg.click('.pod.first .h[data-player="tie-1"]'); await wait(300);
+  ok(await pg.evaluate(() => S.player === 'tie-1'), 'tapping a joint No. 1 player opens their report');
+  await pg.setViewportSize({ width: 1366, height: 900 }); await pg.click('nav.tabs [data-tab=rank]'); await wait(300); await shot('9-desktop-rank-ties');
+  await pg.setViewportSize({ width: 390, height: 844 });
   ok(errs.length === 0, 'no page errors ' + JSON.stringify(errs));
   console.log('script calls:', calls);
   await br.close(); server.close();
