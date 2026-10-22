@@ -189,21 +189,42 @@ function playersPanel(){
 }
 
 function rankView(){
-  const g=curGrp(),rg=range(S.period),list=rankList(S.rdomain,g,rg);const [a,b,c]=list;
-  const [fa,sa]=a?splitName(a.p.name):["",""];
-  const tile=(r,cls)=>r?`<button class="pod ${cls}" data-player="${esc(r.p.id)}" aria-label="${ord(r.r)}: ${esc(r.p.name)}, ${r.s} points"><span class="no">${r.r}</span><img src="${cutImg(r.p)}" alt=""><span class="foot"><b>${esc(firstName(r.p.name))}</b><span class="num">${r.s}</span></span></button>`:"";
+  const g=curGrp(),rg=range(S.period),list=rankList(S.rdomain,g,rg);
+  // Tied players share the No. 1 poster and the 2nd and 3rd cards. Only players with points go on the podium;
+  // anyone a crowded tie can't fit (more than 3) moves down to the rows so nobody is hidden.
+  const tier=n=>list.filter(r=>r.r===n&&r.s>0),[t1,t2,t3]=[tier(1),tier(2),tier(3)],MAX=3;
+  const shown=new Set([t1,t2,t3].flatMap(t=>t.slice(0,MAX)));
+  const rows=list.filter(r=>!shown.has(r)),cnt={};list.forEach(r=>cnt[r.r]=(cnt[r.r]||0)+1);
+  const more=t=>t.length>MAX?`<span class="more">+${t.length-MAX} more below</span>`:"";
+  const lbl=r=>`${ord(r.r)}: ${esc(r.p.name)}, ${r.s} points`;
+  const first=t=>{
+    if(t.length===1){const a=t[0],[fa,sa]=splitName(a.p.name);return `<button class="pod first" data-player="${esc(a.p.id)}" aria-label="${lbl(a)}">
+      <span class="slab"></span><img src="${cutImg(a.p)}" alt="">
+      <span class="who"><small>No. 1 in ${esc(g)}</small><b>${fa?esc(fa)+"<br>":""}<em>${esc(sa)}</em></b></span>
+      <span class="score"><sup>pts</sup><b class="num">${a.s}</b></span><i class="arr">${ARROWI}</i>
+    </button>`}
+    const ps=t.slice(0,MAX);
+    return `<div class="pod first joint n${ps.length}"><span class="slab"></span>
+      <small class="k">Joint No. 1 in ${esc(g)}</small>
+      <div class="duo">${ps.map(r=>{const [fa,sa]=splitName(r.p.name);return `<button class="h" data-player="${esc(r.p.id)}" aria-label="${lbl(r)}"><span class="tag">${fa?esc(fa)+"<br>":""}<em>${esc(sa)}</em></span><img src="${cutImg(r.p)}" alt=""></button>`}).join("")}</div>
+      <span class="score"><sup>pts</sup><b class="num">${t[0].s}</b><i>each</i></span>${more(t)}
+    </div>`};
+  const card=(t,n,cls)=>{
+    if(!t.length)return "";
+    if(t.length===1){const r=t[0];return `<button class="pod ${cls}" data-player="${esc(r.p.id)}" aria-label="${lbl(r)}"><span class="no">${n}<small>${ord(n).slice(-2)}</small></span><img src="${cutImg(r.p)}" alt=""><span class="foot"><b>${esc(firstName(r.p.name))}</b><span class="num">${r.s}</span></span></button>`}
+    const ps=t.slice(0,MAX);
+    return `<div class="pod ${cls} shared n${ps.length}"><span class="no">${n}<small>${ord(n).slice(-2)}</small></span>
+      ${ps.map((r,i)=>`<button class="mate m${i}" data-player="${esc(r.p.id)}" aria-label="${lbl(r)}"><img src="${cutImg(r.p)}" alt=""><span class="ell">${esc(splitName(r.p.name).join(" ").trim().replace(/ (\S)\S*$/," $1."))}</span></button>`).join("")}
+      <span class="foot"><span class="num">${t[0].s}</span></span><span class="badge">${t.length} players</span>
+    </div>`};
   return `
   ${title("Leader","board")}
   ${chips("","grp",groups(),g)}
   ${chips("","period",PERIODS,S.period,x=>PSHORT[x],"sm")}
   ${cols(list.length?`<div class="podium">
-    <button class="pod first" data-player="${esc(a.p.id)}" aria-label="1st: ${esc(a.p.name)}, ${a.s} points">
-      <span class="slab"></span><img src="${cutImg(a.p)}" alt="">
-      <span class="who"><small>No. ${a.r} in ${esc(g)}</small><b>${fa?esc(fa)+"<br>":""}<em>${esc(sa)}</em></b></span>
-      <span class="score"><sup>pts</sup><b class="num">${a.s}</b></span><i class="arr">${ARROWI}</i>
-    </button>
-    ${b||c?`<div class="pair">${tile(b,"second")}${tile(c,"third")}</div>`:""}
-  </div>`:noPlayers(),`${list.length?`<div class="ranks">${list.slice(3).map(r=>`<button class="card row" data-player="${esc(r.p.id)}"><span class="n">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc(r.p.ag)}</small></span><span class="s num">${r.s}</span></button>`).join("")||`<div class="card empty">Everyone in ${esc(g)} is on the podium.</div>`}</div>`:""}
+    ${t1.length?first(t1):`<div class="card empty">No points in ${esc(g)} for this period yet.</div>`}
+    ${t2.length||t3.length?`<div class="pair">${card(t2,2,"second")}${card(t3,3,"third")}</div>`:""}
+  </div>`:noPlayers(),`${list.length?`<div class="ranks">${rows.map(r=>`<button class="card row" data-player="${esc(r.p.id)}"><span class="n">${r.r}</span><span class="nm"><span class="ell">${esc(r.p.name)}</span><small>${esc(r.p.ag)}</small></span>${cnt[r.r]>1?'<span class="eq">tied</span>':""}<span class="s num">${r.s}</span></button>`).join("")||`<div class="card empty">Everyone in ${esc(g)} is on the podium.</div>`}</div>`:""}
   <div class="filters" aria-label="Domain">${["Overall",...domainsWithData()].map(x=>`<button data-set="rdomain" data-val="${esc(x)}" aria-pressed="${x===S.rdomain}">${esc(x)}</button>`).join("")}</div>`,"rank")}`;
 }
 
