@@ -50,7 +50,22 @@ function curGrp(){const gs=groups();if(gs.length&&!gs.includes(S.grp))S.grp=gs[0
 
 // ---------- day sheets ----------
 const dayOf=date=>(DAYS[date]=DAYS[date]||{date,marks:{},specials:[]});
-const specials=(date=S.date)=>{const d=dayOf(date);d.specials=d.specials||[];if(!d.specials.length)d.specials.push({id:"s"+uid(),name:"",max:null});return d.specials};
+// Special challenges belong to one group on one date (morning and evening groups can do different ones).
+// day.specials is one flat list; each challenge carries its group in "g". Older days saved before this have
+// challenges with no group, shared by every group: spOf falls back to those until a group makes its own list.
+const spOf=(day,g)=>{const all=day.specials||[],own=all.filter(s=>s.g===g);return own.length?own:all.filter(s=>!s.g)};
+function specials(date=S.date,g=curGrp()){
+  const d=dayOf(date);d.specials=d.specials||[];
+  if(!d.specials.some(s=>s.g===g)){
+    // first time this group opens the date: copy any shared challenges under new ids for this group only,
+    // and move this group's points onto the copies, so renaming or removing one leaves other groups alone
+    const shared=d.specials.filter(s=>!s.g),ids=new Set(inGrp(g).map(p=>p.id)),m=(d.marks||{}).Special||{};
+    shared.forEach(s=>{const id="s"+uid();d.specials.push({id,name:s.name,max:s.max,g});
+      Object.keys(m).forEach(pid=>{const r=m[pid];if(ids.has(pid)&&r&&r[s.id]!=null){r[id]=r[s.id];delete r[s.id]}})});
+    if(shared.length){bump();queueDay(date,300)}else d.specials.push({id:"s"+uid(),name:"",max:null,g});
+  }
+  return d.specials.filter(s=>s.g===g);
+}
 const acts=(dom,date=S.date)=>dom==="Special"?specials(date):(CFG.acts[dom]||[]);
 const sumRow=r=>Object.values(r||{}).reduce((a,v)=>a+(+v||0),0);
 const counts=d=>!CFG.nototal.includes(d);
