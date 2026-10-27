@@ -117,11 +117,14 @@ async function buildPdf(kind,pid){
     const dates=Object.keys(DAYS).filter(d=>inR(d,rg)&&markedOn(d).length).sort();
     if(!dates.length){doc.setFontSize(11);doc.setTextColor(...INK);doc.text("No points saved in this period.",14,y+6)}
     dates.forEach(dt=>{y=section(doc,y+4,fmtDate(dt)+" "+dt.slice(0,4));const day=DAYS[dt];
-      markedOn(dt).forEach(d=>{const as=d==="Special"?(day.specials||[]):(CFG.acts[d]||[]);const m=day.marks[d]||{};
-        const ids=new Set(as.map(a=>a.id));Object.values(m).forEach(r=>Object.keys(r||{}).forEach(k=>{if(!ids.has(k)){ids.add(k);as.push({id:k,name:"(removed)"})}}));
-        const rows=groups().flatMap(g=>inGrp(g).filter(p=>m[p.id]&&Object.keys(m[p.id]).length).map(p=>[p.name,g,...as.map(a=>m[p.id][a.id]??""),sumRow(m[p.id])]));
-        doc.setFontSize(9.5);doc.setTextColor(...GREEN);doc.text(d,14,y+1);
-        y=tbl(doc,y+3,["Player","Group",...as.map(a=>(a.name||"Special")+(a.max!=null?" /"+a.max:"")),"Total"],rows,{styles:{fontSize:as.length>6?7:8.5},columnStyles:{0:{cellWidth:34}}})+6})});
+      markedOn(dt).forEach(d=>{const m=day.marks[d]||{};
+        // special challenges differ by group, so each group gets its own Special table
+        (d==="Special"?groups().map(g=>[g,[g]]):[["",groups()]]).forEach(([lbl,gs])=>{
+          const ps=gs.flatMap(g=>inGrp(g).filter(p=>m[p.id]&&Object.keys(m[p.id]).length).map(p=>[p,g]));if(!ps.length)return;
+          const as=(d==="Special"?spOf(day,gs[0]):(CFG.acts[d]||[])).slice();
+          const ids=new Set(as.map(a=>a.id));ps.forEach(([p])=>Object.keys(m[p.id]).forEach(k=>{if(!ids.has(k)){ids.add(k);as.push({id:k,name:"(removed)"})}}));
+          doc.setFontSize(9.5);doc.setTextColor(...GREEN);doc.text(d+(lbl?" · "+lbl:""),14,y+1);
+          y=tbl(doc,y+3,["Player","Group",...as.map(a=>(a.name||"Special")+(a.max!=null?" /"+a.max:"")),"Total"],ps.map(([p,g])=>[p.name,g,...as.map(a=>m[p.id][a.id]??""),sumRow(m[p.id])]),{styles:{fontSize:as.length>6?7:8.5},columnStyles:{0:{cellWidth:34}}})+6})})});
     file="Day sheets.pdf";
   }
   pdfFooters(doc);
@@ -154,7 +157,7 @@ document.addEventListener("click",e=>{
   if(d.pdf){makePdf(d.pdf,d.pid);return}
   if(d.hide){const p=pById(d.hide);if(!p)return;if(p.active===false)return toast(p.name+" is marked inactive in your sports app.");p.hidden=!p.hidden;bump();write("players/"+p.id,playerBody(p));render();return}
   if(d.delact){const n=(CFG.acts[S.setDom]||[]).find(a=>a.id===d.delact);CFG.acts[S.setDom]=(CFG.acts[S.setDom]||[]).filter(a=>a.id!==d.delact);saveCfg();toast(`Removed ${n?n.name:"activity"}. Points already given stay in the totals.`);render();return}
-  if(d.delsp){const day=dayOf(S.date);day.specials=specials().filter(x=>x.id!==d.delsp);Object.values(day.marks.Special||{}).forEach(r=>delete r[d.delsp]);bump();queueDay(S.date,300);render();return}
+  if(d.delsp){const day=dayOf(S.date);day.specials=day.specials.filter(x=>x.id!==d.delsp);Object.values(day.marks.Special||{}).forEach(r=>delete r[d.delsp]);bump();queueDay(S.date,300);render();return}
   const a=d.act;
   if(a==="back"){S.player=null;render();return}
   if(a==="note"){S.notes=!S.notes;render();return}

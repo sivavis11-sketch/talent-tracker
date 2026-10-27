@@ -92,6 +92,27 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   ok(await pg.isVisible('#done.ok .mark') && (await pg.textContent('#done')).includes('Points saved') && (await pg.textContent('[data-act=save]')).includes('Saved'), 'Save day shows a big "Points saved" tick and the button says Saved');
   await (await pg.$$('input[data-cell]'))[1].fill('3'); ok((await pg.textContent('[data-act=save]')).trim() === 'Save day', 'changing a score turns the button back to Save day');
 
+  // special challenges belong to one group: naming GROUP 1's challenge leaves GROUP 2's name and points alone
+  const g2before = await pg.evaluate(() => ({ names: specials(TODAY, 'GROUP 2').map(s => s.name).join(), pts: inGrp('GROUP 2').map(p => sumRow((dayOf(TODAY).marks.Special || {})[p.id])).join() }));
+  await pg.click('[data-set=grp][data-val="GROUP 1"]'); await wait(200);
+  ok(await pg.inputValue('[data-spname]') === '', 'another group opens the same date with its own empty challenge');
+  await pg.fill('[data-spname]', 'Evening rondo'); await pg.press('[data-spname]', 'Tab'); await wait(400);
+  const g2after = await pg.evaluate(() => ({ names: specials(TODAY, 'GROUP 2').map(s => s.name).join(), pts: inGrp('GROUP 2').map(p => sumRow((dayOf(TODAY).marks.Special || {})[p.id])).join(), g1: specials(TODAY, 'GROUP 1').map(s => s.name).join() }));
+  ok(g2after.names === 'Weak foot passes' && g2after.pts === g2before.pts && g2after.g1 === 'Evening rondo', 'naming one group\'s challenge does not change the other group\'s challenge or points ' + JSON.stringify({ g2before, g2after }));
+  // a day saved before this change (one shared challenge list): renaming for one group splits it off and keeps everyone's points
+  const legacy = await pg.evaluate(() => {
+    const dt = addDays(TODAY, -5), a = inGrp('GROUP 1')[0].id, b = inGrp('GROUP 2')[0].id;
+    DAYS[dt] = { date: dt, marks: { Special: { [a]: { L1: 5 }, [b]: { L1: 7 } } }, specials: [{ id: 'L1', name: 'Morning drill', max: null }] }; bump();
+    S.grp = 'GROUP 2'; openPoints(dt); render(); return { dt, a, b };
+  });
+  await wait(200); await pg.fill('[data-spname]', 'Evening drill'); await pg.press('[data-spname]', 'Tab'); await wait(400);
+  const lg = await pg.evaluate(({ dt, a, b }) => { const d = DAYS[dt], m = d.marks.Special;
+    return { g1: spOf(d, 'GROUP 1').map(s => s.name).join(), g2: spOf(d, 'GROUP 2').map(s => s.name).join(), a: m[a].L1, b: sumRow(m[b]), bOld: m[b].L1 }; }, legacy);
+  ok(lg.g1 === 'Morning drill' && lg.g2 === 'Evening drill' && lg.a === 5 && lg.b === 7 && lg.bOld === undefined, 'an older shared challenge splits per group when renamed, and both groups keep their points ' + JSON.stringify(lg));
+  await pg.evaluate(() => { openPoints(TODAY); render(); }); await pg.click('[data-set=grp][data-val="GROUP 1"]'); await pg.click('[data-set=grp][data-val="GROUP 2"]'); await wait(1500);
+  const pv = data.getSheetByName('Points').rows.filter(r => String(r[0]).replace("'", '') === today && r[1] === 'Special').map(r => r[2] + '|' + r[6]);
+  ok(pv.some(x => x === 'Weak foot passes|GROUP 2') && !pv.some(x => x.startsWith('Evening rondo|GROUP 2')), 'Points tab names each group\'s own challenge ' + JSON.stringify([...new Set(pv)]));
+
   // offline: keep on device, send when back
   netDown = true; await pg.evaluate(() => dispatchEvent(new Event('offline')));
   const c0 = (await pg.$$('input[data-cell]'))[0]; await c0.fill('5'); await wait(1600);
