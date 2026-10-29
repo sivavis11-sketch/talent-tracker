@@ -167,7 +167,7 @@ document.addEventListener("click",e=>{
   if(a==="install"){if(installEvt){installEvt.prompt();installEvt.userChoice.finally(()=>{installEvt=null;render()})}return}
   if(a==="focusadd"){const n=document.getElementById("newact");if(n){n.focus();n.scrollIntoView({block:"center"})}return}
   if(a==="preview"){if(S.dlp){S.player=S.dlp;S.period=S.dlPeriod;render();scrollTo(0,0)}return}
-  if(a==="addsp"){specials().push({id:"s"+uid(),name:"",max:null});render();const ins=document.querySelectorAll("[data-spname]");if(ins.length)ins[ins.length-1].focus();return}
+  if(a==="addsp"){specials();dayOf(S.date).specials.push({id:"s"+uid(),name:"",max:null,g:curGrp()});render();const ins=document.querySelectorAll("[data-spname]");if(ins.length)ins[ins.length-1].focus();return}
   if(a==="counts"){const x=S.setDom;CFG.nototal=counts(x)?[...CFG.nototal,x]:CFG.nototal.filter(y=>y!==x);bump();saveCfg();render();return}
   if(a==="addact"){const n=S.newAct.trim(),m=parseInt(S.newMax,10);if(!n)return toast("Type the activity name.");
     (CFG.acts[S.setDom]=CFG.acts[S.setDom]||[]).push({id:"a"+uid(),name:n,max:isNaN(m)?null:m});S.newAct="";S.newMax="";saveCfg();toast(`Added ${n} to ${S.setDom}.`);render();return}

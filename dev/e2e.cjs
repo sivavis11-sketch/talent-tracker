@@ -96,6 +96,9 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   const g2before = await pg.evaluate(() => ({ names: specials(TODAY, 'GROUP 2').map(s => s.name).join(), pts: inGrp('GROUP 2').map(p => sumRow((dayOf(TODAY).marks.Special || {})[p.id])).join() }));
   await pg.click('[data-set=grp][data-val="GROUP 1"]'); await wait(200);
   ok(await pg.inputValue('[data-spname]') === '', 'another group opens the same date with its own empty challenge');
+  await pg.click('[data-act=addsp]'); await wait(200);
+  ok((await pg.$$('[data-spname]')).length === 2 && await pg.evaluate(() => document.activeElement.dataset.spname != null), 'Add another special challenge adds a second challenge box');
+  await pg.click('[data-delsp]:last-of-type'); await wait(200);
   await pg.fill('[data-spname]', 'Evening rondo'); await pg.press('[data-spname]', 'Tab'); await wait(400);
   const g2after = await pg.evaluate(() => ({ names: specials(TODAY, 'GROUP 2').map(s => s.name).join(), pts: inGrp('GROUP 2').map(p => sumRow((dayOf(TODAY).marks.Special || {})[p.id])).join(), g1: specials(TODAY, 'GROUP 1').map(s => s.name).join() }));
   ok(g2after.names === 'Weak foot passes' && g2after.pts === g2before.pts && g2after.g1 === 'Evening rondo', 'naming one group\'s challenge does not change the other group\'s challenge or points ' + JSON.stringify({ g2before, g2after }));
