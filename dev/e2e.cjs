@@ -211,6 +211,19 @@ const LIBS = { 'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'jspdf.plugin.
   ok(await pg.evaluate(() => S.player === 'tie-1'), 'tapping a joint No. 1 player opens their report');
   await pg.setViewportSize({ width: 1366, height: 900 }); await pg.click('nav.tabs [data-tab=rank]'); await wait(300); await shot('9-desktop-rank-ties');
   await pg.setViewportSize({ width: 390, height: 844 });
+  // Mark Points: with a long list the header rows stay frozen while the players scroll, and the box being typed in lights up its player and column
+  await pg.evaluate(() => { for (let i = 8; i < 22; i++) PLAYERS.push({ id: 'tie-' + i, name: 'Tie Player' + i, group: 'GROUP T', ag: 'U12' }); bump(); S.grp = 'GROUP T'; S.tab = 'points'; S.player = null; S.doms = ['Daily', 'Flexibility', 'Special']; render(); });
+  await wait(300);
+  const box = (await pg.$$('input[data-cell]'))[14 * 11 + 3]; await box.focus(); await box.fill('12');
+  await pg.evaluate(() => { const w = document.querySelector('.grid-wrap'); w.scrollTop = document.activeElement.closest('tr').offsetTop - 200; });
+  await wait(200);
+  const fr = await pg.evaluate(() => { const w = document.querySelector('.grid-wrap').getBoundingClientRect(), r1 = document.querySelector('.grid thead tr th.grp').getBoundingClientRect(),
+    r2 = document.querySelector('.grid thead tr+tr th').getBoundingClientRect(), on = document.querySelector('.grid tbody tr.on .nm'), oh = document.querySelector('.grid thead th.on');
+    return { scrolled: document.querySelector('.grid-wrap').scrollTop > 0, top1: Math.round(r1.top - w.top), gap: Math.round(r2.top - r1.bottom), row: on && on.firstChild.textContent, col: oh && oh.textContent }; });
+  ok(fr.scrolled && fr.top1 === 0 && Math.abs(fr.gap) <= 1 && !!fr.row && !!fr.col, 'Mark Points header rows stay frozen while players scroll, and the typed box lights up its player and column ' + JSON.stringify(fr));
+  await pg.evaluate(() => scrollTo(0, document.querySelector('.sheet').getBoundingClientRect().top + scrollY - 70)); await wait(200);
+  await pg.screenshot({ path: path.join(SHOTS, '3b-points-frozen.png') });
+  await pg.setViewportSize({ width: 1366, height: 900 }); await wait(300); await box.focus(); await shot('9-desktop-points-frozen'); await pg.setViewportSize({ width: 390, height: 844 });
   ok(errs.length === 0, 'no page errors ' + JSON.stringify(errs));
   console.log('script calls:', calls);
   await br.close(); server.close();

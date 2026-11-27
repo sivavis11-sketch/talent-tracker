@@ -129,13 +129,20 @@ button.topc{cursor:pointer}
 
 /* points table */
 .sheet{padding:14px 8px 12px}
-.grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:4px 2px 8px}
-.grid{border-collapse:separate;border-spacing:0 8px;min-width:100%}
-.grid th,.grid td{padding:0 4px;white-space:nowrap;text-align:center}
-.grid thead th{vertical-align:bottom;font-size:11px;line-height:1.2;white-space:normal;min-width:62px;max-width:84px;font-weight:500;color:var(--soft)}
+/* the table scrolls inside its card: the header rows stay frozen at the top and the player names on the left */
+.grid-wrap{overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:min(62vh,560px);padding:0 0 8px}
+.grid{border-collapse:separate;border-spacing:0;min-width:100%}
+.grid th,.grid td{padding:4px;white-space:nowrap;text-align:center}
+.grid thead th{position:sticky;top:0;z-index:2;background:var(--card);vertical-align:bottom;font-size:11px;line-height:1.2;white-space:normal;min-width:62px;max-width:84px;font-weight:500;color:var(--soft)}
+.grid thead tr:first-child th{box-sizing:border-box;height:38px;padding-top:8px}
+.grid thead tr+tr th{top:38px;padding-bottom:8px;box-shadow:0 1px 0 var(--line)}
+.grid thead tr:first-child th[rowspan]{box-shadow:0 1px 0 var(--line)}
+.grid thead th.on{background:var(--lime);color:var(--ink);border-radius:0 0 12px 12px}
 .grid thead th b{display:block;font-weight:700;color:var(--ink)}
 .grid .grp{color:var(--ink);font-weight:700}
 .grid .nm{position:sticky;left:0;text-align:left;font-weight:600;font-size:14px;min-width:86px;background:var(--card);z-index:1}
+.grid thead .nm{z-index:3}
+.grid tr.on .nm{background:var(--lime);border-radius:12px}
 .grid thead .nm{font-size:11px;color:var(--soft)}
 .grid .nm small{display:block;font-size:10px;color:var(--soft);font-weight:400}
 .box{width:56px;height:42px;border:1.5px solid var(--line);border-radius:14px;text-align:center;font-size:17px;font-weight:700;color:var(--ink);background:var(--pit);font-variant-numeric:tabular-nums;padding:0}
