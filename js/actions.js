@@ -194,6 +194,10 @@ document.addEventListener("click",e=>{
       else done("err","Not saved",saveErr||"Your sheet didn't answer. Tap Save day again.");
     })();return}
 });
+// Mark Points: light up the player's name and the activity header for the box being typed in
+document.addEventListener("focusin",e=>{const t=e.target,g=t.closest&&t.closest(".grid");document.querySelectorAll(".grid .on").forEach(x=>x.classList.remove("on"));
+  if(!g||!t.matches("input[data-cell]"))return;const td=t.closest("td"),tr=td.parentElement,i=[...tr.children].indexOf(td)-1,h=g.querySelector("thead tr+tr");
+  tr.classList.add("on");if(h&&h.children[i])h.children[i].classList.add("on")});
 document.addEventListener("input",e=>{const t=e.target;
   if(t.dataset.cell){S.saved=null;const sb=document.querySelector('[data-act=save]');if(sb&&!S.busy){sb.classList.remove("ok");sb.textContent="Save day"}const [dm,pid,aid]=t.dataset.cell.split("|");const v=t.value.replace(/\D/g,"").slice(0,6);if(v!==t.value)t.value=v;
     const m=dayOf(S.date).marks,dd=(m[dm]=m[dm]||{});dd[pid]=dd[pid]||{};if(v==="")delete dd[pid][aid];else dd[pid][aid]=+v;if(!Object.keys(dd[pid]).length)delete dd[pid];
